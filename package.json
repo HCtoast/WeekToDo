@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "주간 타임블록 TODO 위젯",
   "author": "Jaewon",
+  "license": "MIT",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
