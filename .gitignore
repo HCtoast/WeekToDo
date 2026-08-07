@@ -1,0 +1,31 @@
+# 의존성
+node_modules/
+
+# 빌드 산출물
+out/
+dist/
+release/
+.vite/
+*.tsbuildinfo
+
+# 로그·OS 부스러기
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# 에디터 (설정 파일만 공유한다 — .vscode/settings.json에 개발 환경 함정 해결책이 들어 있다)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+
+# ── 로컬 전용 자격증명 — 절대 커밋하지 않는다 ──────────────────────────────
+# 실제 키와 토큰은 저장소가 아니라 OS의 앱 데이터 폴더에 암호화되어 있다:
+#   %APPDATA%/weektodo-widget/google-auth.json
+#   %APPDATA%/weektodo-widget/llm-auth.json
+.env
+.env.*
+google-credentials.json
+# Google Cloud Console이 내려주는 OAuth 클라이언트 파일
+client_secret*.json

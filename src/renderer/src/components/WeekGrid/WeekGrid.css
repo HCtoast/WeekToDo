@@ -1,0 +1,459 @@
+﻿:root {
+  /*
+   * 날짜 머리(요일·날짜 줄 + 앵커 줄)의 높이. 모든 열이 이 값 하나를 쓴다.
+   *
+   * 열마다 내용에 따라 높이가 달라지면 그 열의 본문이 아래로 밀려 시간축이 어긋난다.
+   * 그래서 머리 안에는 **길이가 변하는 것을 두지 않는다** — 종일 일정은 머리 위의
+   * 별도 띠로, 잠깐 뜨는 입력은 absolute로 겹쳐 띄운다.
+   */
+  --head-h: 52px;
+  /* 종일 띠. 렌더러가 .grid에 "가장 많은 날의 개수 × 한 줄"로 채운다 (없으면 0) */
+  --all-day-h: 0px;
+}
+
+.grid {
+  display: flex;
+  /* 기본값 stretch로 두면 날짜 열이 스크롤 뷰 높이로 늘어나고, 그 안의 sticky 헤더는
+     부모 박스를 벗어나지 못해 하루치를 다 스크롤하기 전에 같이 밀려 올라간다.
+     열이 내용(헤더 + 24시간) 높이를 갖게 해야 헤더가 끝까지 붙어 있다. */
+  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.axis {
+  position: sticky;
+  left: 0;
+  /* 고정 헤더/시간축은 블록·현재 시각선(z-index 5~6)보다 위에 있어야
+     스크롤된 내용이 헤더를 뚫고 보이지 않는다. */
+  z-index: 9;
+  flex: 0 0 34px;
+  /* 시각 라벨이 absolute라 내용 높이가 잡히지 않는다. 날짜 열과 같은 높이를 직접 준다. */
+  height: calc(var(--all-day-h) + var(--head-h) + var(--day-h));
+  background: var(--sticky-veil), var(--widget-tint);
+}
+
+/* 종일 띠는 머리보다 위에 붙고, 머리는 그 아래에 붙는다 */
+.axis-all-day,
+.all-day {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--all-day-h);
+  background: var(--sticky-veil), var(--widget-tint);
+}
+
+.axis-head,
+.day-head {
+  position: sticky;
+  top: var(--all-day-h);
+  z-index: 10;
+  background: var(--sticky-veil), var(--widget-tint);
+  border-bottom: 1px solid var(--border);
+}
+
+.axis-all-day {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 5px;
+  font-size: 10px;
+  color: var(--text-dim);
+  overflow: hidden;
+}
+
+.axis-head {
+  height: var(--head-h);
+}
+
+.axis-hour {
+  position: absolute;
+  right: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  transform: translateY(-6px);
+  margin-top: calc(var(--all-day-h) + var(--head-h));
+  font-variant-numeric: tabular-nums;
+}
+
+.day {
+  flex: 1 0 110px;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+}
+
+/*
+ * 모든 날짜 머리는 **정확히 같은 높이**여야 한다.
+ *
+ * min-height로 두고 내용에 따라 늘어나게 하면, 종일 일정이 있는 날만 머리가 커져서
+ * 그 열의 본문이 아래로 밀리고 오늘·내일의 시간선이 서로 어긋난다.
+ * 종일 띠의 높이는 --all-day-h가 모든 열에 같은 값으로 정한다.
+ */
+.day-head {
+  height: var(--head-h);
+  padding: 3px 4px;
+}
+
+.day-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.day.is-today .day-name,
+.day.is-today .day-date {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── 종일 일정 ─────────────────────────────────────────────────────────── */
+
+/*
+ * 종일 일정 — 날짜 머리 위, 자기 요일 열 안에 놓인다.
+ *
+ * 칩은 한 줄에 하나씩 쌓는다. flex-wrap으로 두면 제목 길이와 열 너비에 따라 줄 수가
+ * 달라져 높이를 미리 계산할 수 없고, 결국 열마다 띠 높이가 달라진다.
+ * 한 줄에 하나면 높이가 개수로 딱 정해진다 (한 줄 = ALL_DAY_ROW_PX).
+ */
+.all-day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 3px;
+  overflow: hidden;
+}
+
+.all-day-chip {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  border-left: 3px solid #8ab4f8;
+  background: rgb(84 96 120 / 82%);
+  font-size: 11px;
+  line-height: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day.is-today .all-day-chip {
+  border-left-color: var(--accent);
+}
+
+/* ── 작은 버튼 ─────────────────────────────────────────────────────────── */
+
+.mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 5px;
+}
+
+.mini:hover {
+  background: rgb(255 255 255 / 14%);
+  color: var(--text);
+}
+
+.mini.active {
+  background: rgb(124 178 255 / 26%);
+  color: var(--text);
+}
+
+.mini.danger:hover {
+  background: rgb(220 60 60 / 35%);
+  color: var(--text);
+}
+
+/* 앵커: 요일 기본값이면 흐리게, 직접 지정했으면 또렷하게 */
+.anchor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 2px 4px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.anchor-btn.is-override {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.anchor-btn:hover {
+  background: rgb(255 255 255 / 14%);
+}
+
+.quick-add {
+  width: 100%;
+  min-width: 0;
+  border-color: var(--accent);
+  font-size: 12px;
+  padding: 3px 6px;
+}
+
+.anchor-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.anchor-input select {
+  border-color: var(--accent);
+  font-size: 12px;
+}
+
+/*
+ * 빠른 추가 입력은 날짜 머리 **바로 아래**에 겹쳐 띄운다.
+ *
+ * 머리 안에 자리를 차지하게 두면 그 열만 높이가 늘어나 시간축이 어긋나므로(--head-h 고정)
+ * 흐름에서 빼야 하는데, 머리 안쪽에 겹치면 앵커 시각을 가린다.
+ * 머리 밑(top: 100%)으로 내리면 앵커를 보면서 입력할 수 있다.
+ *
+ * 아래 블록 위로 뜨므로 배경을 불투명하게 준다 — 반투명이면 블록 글자와 겹쳐 안 읽힌다.
+ */
+.day-head .quick-add {
+  position: absolute;
+  inset-inline: 4px;
+  top: calc(100% + 3px);
+  width: auto;
+  /* 블록(5~6)과 현재 시각선(6)보다 위 */
+  z-index: 11;
+  background: #1b1e27;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 45%);
+}
+
+/* ── 그리드 본문 ───────────────────────────────────────────────────────── */
+
+.day-body {
+  position: relative;
+}
+
+.hour-line {
+  position: absolute;
+  inset-inline: 0;
+  border-top: 1px solid rgb(255 255 255 / 6%);
+}
+
+.anchor-line {
+  position: absolute;
+  inset-inline: 0;
+  border-top: 1px dashed var(--accent);
+  opacity: 0.45;
+  z-index: 1;
+}
+
+.anchor-line.is-override {
+  border-top-style: solid;
+  opacity: 0.9;
+}
+
+/*
+ * 현재 시각선. 유리 배경 위에서는 얇은 선 하나가 블록 테두리에 묻힌다.
+ * 밝은 빨강 + 바깥으로 번지는 그림자 + 왼쪽 끝 점으로 "지금"이 어디인지 바로 잡히게 한다.
+ */
+.now-line {
+  position: absolute;
+  inset-inline: 0;
+  height: 0;
+  border-top: 2px solid #ff4d4f;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 45%),
+    0 0 7px 1px rgb(255 77 79 / 70%);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.now-line::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  box-shadow: 0 0 6px 1px rgb(255 77 79 / 80%);
+}
+
+.block {
+  position: absolute;
+  overflow: hidden;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 1.3;
+  /* 얇은 글자는 색 배경 위에서 흐려 보인다 */
+  font-weight: 600;
+  /* 배경이 무엇이든 글자는 검정으로 통일한다. 배경 밝기는 ensureReadableBackground가 보장한다. */
+  color: var(--block-text);
+  /* 색이 비슷해도 경계가 보이도록 모든 블록에 구분선을 넣는다. */
+  border: 1px solid rgb(0 0 0 / 30%);
+  /*
+   * 왼쪽 띠는 종류를 가리지 않고 모든 블록에 있다 — 구글에만 있으면 나란히 놓았을 때
+   * 로컬·TODO가 허전하다. 색은 렌더러가 카테고리에서 뽑아 인라인으로 준다.
+   */
+  border-left: 5px solid var(--text-dim);
+  border-radius: 5px;
+  background: rgb(168 176 194 / 92%);
+  cursor: default;
+}
+
+/*
+ * 짧은 블록(30분 = 27px)은 제목과 시각을 위아래로 쌓을 자리가 없어 시각이 잘린다.
+ * 한 줄에 나란히 놓고 시각을 오른쪽 끝에 붙인다 — 제목이 먼저 줄고 시각은 끝까지 남는다.
+ */
+.block.is-compact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 4px;
+  line-height: 1.15;
+}
+
+.block.is-compact .block-title {
+  /* min-width: 0이 있어야 flex 안에서 말줄임이 걸린다 */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.block.is-compact .block-time {
+  flex: none;
+}
+
+/*
+ * 구글 이벤트는 "남의 캘린더에서 온 것"이라 한눈에 갈려야 한다.
+ * 왼쪽 띠 하나로는 약해서 세 가지를 함께 쓴다 — 굵은 파란 띠, 파랑으로 기운 배경,
+ * 제목 앞 달력 아이콘. 카테고리 색이 없는 유일한 종류라 배경으로 구분해도 충돌하지 않는다.
+ */
+.block.kind-google {
+  background: linear-gradient(rgb(150 176 224 / 94%), rgb(138 165 216 / 94%));
+  border-color: rgb(30 70 140 / 45%);
+  /* 구글은 카테고리가 없으므로 띠 색이 고정이다 (렌더러가 인라인 색을 주지 않는다) */
+  border-left-color: #1a56c4;
+}
+
+.block-src {
+  /* 제목 글자와 같은 검정 계열이되 살짝 눌러 아이콘이 제목을 덮지 않게 한다. */
+  opacity: 0.65;
+}
+
+/* 홀드한 구글 이벤트는 놓는 순간 구글 캘린더가 바뀐다 — 잡을 수 있다는 걸 분명히 한다. */
+.block.kind-google.is-held {
+  border-left-color: #ffb020;
+  box-shadow: inset 0 0 0 1px rgb(255 176 32 / 70%);
+}
+
+/*
+ * TODO 슬롯은 겹침 허용이라 점선. 항상 끌어 옮길 수 있다.
+ * 왼쪽 띠만은 실선으로 남긴다 — 점선으로 끊기면 색 띠로 안 읽힌다.
+ */
+.block.kind-todo {
+  border-top-style: dashed;
+  border-right-style: dashed;
+  border-bottom-style: dashed;
+  cursor: grab;
+}
+
+/* 홀드 중에만 로컬 이벤트를 움직일 수 있다. */
+.block.is-held {
+  cursor: grab;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 45%);
+}
+
+.block.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  z-index: 5;
+}
+
+.block.is-done .block-title {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* 시간이 지난 블록은 흐리게만 한다 — 완료 상태는 절대 건드리지 않는다. */
+.block.is-past {
+  opacity: 0.68;
+}
+
+.block.is-past.is-selected {
+  opacity: 1;
+}
+
+.overdue-badge {
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgb(200 40 40 / 70%);
+  color: #fff;
+  font-size: 10px;
+}
+
+.block-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 체크박스와 시각도 같은 검은 글자색을 쓴다 */
+.block .check {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid currentcolor;
+  border-radius: 3px;
+  opacity: 0.8;
+}
+
+.block .check.on {
+  background: currentcolor;
+  opacity: 1;
+}
+
+.block-time {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: currentcolor;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+
+.resize-handle {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 7px;
+  cursor: ns-resize;
+  background: linear-gradient(transparent, rgb(255 255 255 / 30%));
+}
+
+.overflow {
+  position: absolute;
+  inset-inline: 3px;
+  bottom: 3px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgb(200 120 40 / 40%);
+  font-size: 11px;
+  text-align: center;
+}

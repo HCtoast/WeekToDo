@@ -1,0 +1,73 @@
+/*
+ * 명령 입력 창.
+ *
+ * 투명 창 안에 카드를 그린다 — 배경은 카드에만 주고 body에는 주지 않는다.
+ * body가 불투명하면 둥근 모서리 바깥이 검은 사각형으로 남는다.
+ */
+.cmdwin {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  height: 100vh;
+  padding: 10px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 12px;
+  background: rgb(24 28 38 / 97%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 50%);
+  /* 프레임이 없으므로 카드 아무 데나 잡고 끌어서 옮긴다 (입력칸은 아래에서 제외). */
+  -webkit-app-region: drag;
+  cursor: grab;
+}
+
+.cmdwin:active {
+  cursor: grabbing;
+}
+
+.cmdwin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmdwin-icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.cmdwin-input {
+  /* drag 영역 안에서는 명시적으로 제외해야 클릭·선택·커서 이동이 먹는다. */
+  -webkit-app-region: no-drag;
+  cursor: text;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  /* 입력한 명령은 고쳐 쓰려면 선택할 수 있어야 한다 (전역 user-select: none의 예외). */
+  user-select: text;
+}
+
+.cmdwin-input:focus {
+  outline: none;
+}
+
+.cmdwin-input:disabled {
+  opacity: 0.55;
+}
+
+.cmdwin-note {
+  padding-left: 24px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* 아무 일도 일어나지 않았을 때만 뜬다 — 평소에는 결과를 글로 알리지 않는다. */
+.cmdwin-note.is-warn {
+  color: #ffc978;
+  user-select: text;
+}

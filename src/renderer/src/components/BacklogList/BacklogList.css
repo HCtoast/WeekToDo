@@ -1,0 +1,129 @@
+.backlog {
+  flex: 0 0 auto;
+  max-height: 34%;
+  overflow-y: auto;
+  /* 왼쪽은 좁게 — 항목이 많아도 시선이 한 줄에 모이게 한다 */
+  padding: 8px 8px 10px 6px;
+  border-top: 1px solid var(--border);
+}
+
+.backlog header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+/* 표지가 가운데 자리를 다 먹어 오른쪽 +가 끝에 붙는다 */
+.backlog h3 {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.backlog ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backlog li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 3px 4px;
+  border-radius: 5px;
+  /* 그리드로 끌어다 놓으면 시간대가 생기며 승격된다. */
+  cursor: grab;
+}
+
+.backlog li:hover {
+  background: rgb(255 255 255 / 7%);
+}
+
+.backlog li.done .backlog-title {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.backlog .check {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1.5px solid var(--text-dim);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.backlog .check:hover {
+  border-color: var(--accent);
+}
+
+.backlog .check.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.backlog .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.backlog-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.backlog-title:hover {
+  text-decoration: underline;
+}
+
+/* 마감 임박도 — 24시간 이상 기본 / 6~24시간 주황 / 6시간 미만 빨강 / 지남 진한 빨강 */
+.due {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-dim);
+  background: rgb(255 255 255 / 9%);
+  font-variant-numeric: tabular-nums;
+}
+
+.due.level-warn {
+  background: rgb(230 150 40 / 25%);
+  color: #ffc978;
+}
+
+.due.level-urgent {
+  background: rgb(230 70 70 / 28%);
+  color: #ff9a9a;
+  font-weight: 600;
+}
+
+.due.level-overdue {
+  background: rgb(180 30 30 / 45%);
+  color: #ffc2c2;
+  font-weight: 600;
+}
+
+.backlog .empty {
+  font-size: 11px;
+  color: var(--text-dim);
+}

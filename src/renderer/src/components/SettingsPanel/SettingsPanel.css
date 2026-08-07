@@ -1,0 +1,226 @@
+﻿.settings {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px 16px;
+}
+
+.settings h3 {
+  margin: 16px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.row {
+  padding: 5px 0;
+}
+
+.row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.row-label {
+  font-size: 13px;
+}
+
+.row-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.settings input[type='number'] {
+  width: 46px;
+}
+
+.settings input[type='range'] {
+  width: 110px;
+  accent-color: var(--accent);
+}
+
+.settings input[type='checkbox'] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+}
+
+.settings input[type='number'],
+.settings input[type='date'],
+.settings select {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  /* 단축 속성으로 쓰면 전역 규칙이 background-image로 그리는 select 화살표까지 지워진다 */
+  background-color: rgb(0 0 0 / 30%);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+/* 시각 드롭다운은 화살표 없이 숫자만 (TimeField.css 참고) — 여백만 맞춘다 */
+.settings .timefield select {
+  padding: 2px 5px;
+}
+
+.unit {
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 30px;
+}
+
+.hint,
+.note {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.weekday-anchors {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 10px;
+  margin: 8px 0 4px;
+}
+
+.weekday-anchors label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+/*
+ * 요일 글자만 좁게 고정한다.
+ * `span`을 통째로 잡으면 시각 드롭다운(`.timefield`도 span이다)까지 12px로 눌려
+ * 숫자가 칸 밖으로 삐져나간다.
+ */
+.weekday-anchors label > span:first-child {
+  width: 12px;
+  color: var(--text-dim);
+}
+
+.weekday-anchors .timefield {
+  margin-left: auto;
+}
+
+/* ── 구글 캘린더 ─────────────────────────────────────────────────────────── */
+
+.client-form {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.client-form input {
+  width: 100%;
+}
+
+.client-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.settings .mini {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.settings .mini:hover:not(:disabled) {
+  background: rgb(255 255 255 / 10%);
+  color: var(--text);
+}
+
+.settings .mini:disabled {
+  opacity: 0.45;
+}
+
+.settings .mini.active {
+  border-color: rgb(110 168 254 / 55%);
+  background: rgb(110 168 254 / 20%);
+  color: var(--text);
+}
+
+.settings .mini.danger:hover {
+  background: rgb(220 60 60 / 30%);
+  color: var(--text);
+}
+
+.linklike {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10px;
+  text-decoration: underline;
+}
+
+.google-error {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgb(220 60 60 / 20%);
+  font-size: 10px;
+  line-height: 1.5;
+  user-select: text;
+}
+
+.calendars {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.calendars label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.cal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.calendars em {
+  font-style: normal;
+  font-size: 9px;
+  color: var(--text-dim);
+}

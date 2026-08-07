@@ -1,0 +1,72 @@
+.ctxmenu {
+  position: fixed;
+  z-index: 100;
+  min-width: 170px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  /* 유리 위에 떠 있어야 하므로 위젯보다 진하게 깐다 — 아래 내용이 비치면 글자가 안 읽힌다 */
+  background: rgb(26 30 40 / 96%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+.ctx-head {
+  padding: 5px 9px 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.ctxmenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ctxmenu button:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.ctxmenu button.danger {
+  color: #ff9a9a;
+}
+
+.ctxmenu button.danger:hover {
+  background: rgb(220 60 60 / 28%);
+  color: #fff;
+}
+
+.ctxmenu hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 3px 4px;
+}
+
+.ctx-note {
+  padding: 2px 9px 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  white-space: normal;
+  max-width: 190px;
+}
+
+.ctx-input {
+  width: 210px;
+  font-size: 13px;
+  border-color: var(--accent);
+}

@@ -1,0 +1,74 @@
+.selbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  background: rgb(255 255 255 / 7%);
+  font-size: 13px;
+}
+
+.selbar-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selbar-time,
+.selbar-date {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 그 자리에서 바로 고치는 시각 — 평소엔 글자처럼 보이다가 올리면 입력칸이 드러난다 */
+.selbar-time.is-edit {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.selbar-time input {
+  width: 62px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.selbar-time input:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.selbar-time input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgb(0 0 0 / 30%);
+  color: var(--text);
+}
+
+.selbar-cat {
+  flex: none;
+  max-width: 96px;
+  font-size: 11px;
+  padding: 2px 20px 2px 6px;
+}
+
+.selbar-cat:disabled {
+  opacity: 0.4;
+}
+
+/* 아이콘 버튼 — 크기를 키워 눌러야 할 곳이 분명히 보이게 한다 */
+.selbar .mini {
+  padding: 4px;
+  border-radius: 5px;
+}

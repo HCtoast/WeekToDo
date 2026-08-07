@@ -1,0 +1,159 @@
+﻿.detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.detail header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 4px 5px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-title {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 5px;
+}
+
+.detail-title:hover {
+  border-color: var(--border);
+}
+
+.detail-title:focus {
+  border-color: var(--accent);
+  background: rgb(0 0 0 / 30%);
+  outline: none;
+}
+
+.detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.field span,
+.field-block > span {
+  color: var(--text-dim);
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-dim);
+}
+
+.detail input,
+.detail select,
+.detail textarea {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  /*
+   * `background` 단축 속성으로 쓰면 안 된다 — select의 화살표는 전역 규칙이
+   * `background-image`로 그리는데, 단축 속성이 그걸 함께 지워버린다.
+   */
+  background-color: rgb(0 0 0 / 30%);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 3px 5px;
+}
+
+.detail textarea {
+  resize: vertical;
+  min-height: 46px;
+  line-height: 1.5;
+}
+
+.detail input[type='number'] {
+  width: 52px;
+}
+
+.field-wide {
+  width: 100%;
+}
+
+.countdown {
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  background: rgb(255 255 255 / 6%);
+}
+
+/* 24시간 이상 기본 / 6~24시간 주황 / 6시간 미만 빨강 / 지남 진한 빨강 */
+.countdown.level-warn {
+  background: rgb(230 150 40 / 22%);
+  color: #ffc978;
+}
+
+.countdown.level-urgent {
+  background: rgb(230 70 70 / 24%);
+  color: #ff9a9a;
+  font-weight: 600;
+}
+
+.countdown.level-overdue {
+  background: rgb(180 30 30 / 40%);
+  color: #ffc2c2;
+  font-weight: 600;
+}
+
+.unslot {
+  align-self: flex-start;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.unslot:hover {
+  background: rgb(255 255 255 / 10%);
+  color: var(--text);
+}
+
+.detail .hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.detail-link {
+  align-self: flex-start;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}

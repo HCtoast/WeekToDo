@@ -1,0 +1,50 @@
+.widget {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* 흐림은 OS(Windows 11 acrylic)가 그린다. 여기서는 그 위에 틴트만 얹는다 —
+     CSS backdrop-filter는 창 뒤 바탕화면에 닿지 못해 아무 일도 하지 않는다. */
+  background: var(--widget-tint);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* 클릭 통과 중에는 호버 효과가 남아 있으면 눌릴 것처럼 보인다.
+   pointer-events를 죽여 호버·커서·클릭을 한꺼번에 없앤다.
+   탈출 영역(설정 버튼·설정창)만 auto로 되살려 되돌아올 길을 남긴다. */
+.widget.is-click-through > * {
+  pointer-events: none;
+}
+
+.widget.is-click-through [data-escape-clickthrough] {
+  pointer-events: auto;
+}
+
+/* 지금 만질 수 없는 상태라는 걸 테두리로도 알린다. */
+.widget.is-click-through {
+  border-style: dashed;
+  border-color: rgb(255 255 255 / 18%);
+}
+
+/* 우클릭 메뉴 바깥을 덮어 아무 데나 눌러도 닫히게 한다 */
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.loading {
+  padding: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.error {
+  margin: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgb(220 60 60 / 20%);
+  font-size: 11px;
+  user-select: text;
+}

@@ -1,0 +1,168 @@
+:root {
+  /*
+   * 유리 배경은 OS(Windows 11 acrylic)가 그린다. 여기 값은 그 위에 얹는 "틴트"다.
+   * 알파를 너무 올리면 애써 만든 유리가 그냥 검은 판이 된다.
+   */
+  --widget-tint: rgb(16 18 26 / 55%);
+  --text: #eceef4;
+  --text-dim: #9aa3b4;
+  --accent: #7cb2ff;
+  --border: rgb(255 255 255 / 12%);
+  --field-bg: rgb(0 0 0 / 32%);
+  /*
+   * 타이틀바는 불투명해야 한다 — Windows가 창 위쪽에 그리는 밝은 캡션을 덮기 위함.
+   * 자세한 이유는 WidgetChrome.css 참고.
+   */
+  /* 블록 글자는 배경과 무관하게 검정으로 통일한다 (shared/color.ts의 BLOCK_TEXT_COLOR와 같은 값) */
+  --block-text: #14161c;
+
+  /* 고정된 헤더/시간축 위로 블록이 스크롤되어 지나간다. 한 겹 더 덮어 글자가 겹쳐 읽히지 않게 한다. */
+  --sticky-veil: linear-gradient(rgb(14 16 22 / 70%), rgb(14 16 22 / 70%));
+
+  /* select, input[type=time], checkbox 같은 네이티브 컨트롤이 밝게 그려지면
+     유리 배경 위에서 흰 덩어리로 튄다. 어두운 팔레트를 쓰도록 알려준다. */
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/*
+ * ul/ol의 기본 padding-inline-start는 40px다. list-style만 없애면 글머리 기호는 사라져도
+ * 그 자리는 그대로 남아 목록 전체가 오른쪽으로 밀린다.
+ */
+ul,
+ol {
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  /* 창 배경은 OS 재질이 채운다. body가 불투명하면 그걸 가려버린다. */
+  background: transparent;
+  color: var(--text);
+  font-family: 'Pretendard Variable', Pretendard, 'Segoe UI Variable Text', 'Segoe UI',
+    system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  /*
+   * 투명·반투명 창에서는 서브픽셀 안티앨리어싱(ClearType)이 뒤에 뭐가 있는지 모르는 채로 그려서
+   * 글자 획에 파랑·주황 테두리가 낀다. 회색조로 강제해 색 번짐을 없앤다.
+   */
+  -webkit-font-smoothing: antialiased;
+  /* 위젯은 스크롤바가 보이면 지저분하다. 내부 영역에서만 스크롤한다. */
+  overflow: hidden;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* lucide 아이콘은 inline SVG라 기본 baseline 정렬 때문에 글자와 어긋난다. */
+svg {
+  display: block;
+  flex: none;
+}
+
+/* ── 폼 컨트롤 ─────────────────────────────────────────────────────────────
+   네이티브 기본 모양은 유리 배경 위에서 회색 덩어리로 튄다.
+   전부 같은 규칙으로 통일하고, select는 기본 화살표를 지우고 직접 그린다. */
+
+input,
+select,
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--field-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 7px;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: rgb(255 255 255 / 22%);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgb(0 0 0 / 45%);
+}
+
+select {
+  appearance: none;
+  padding-right: 22px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position:
+    calc(100% - 13px) calc(50% + 1px),
+    calc(100% - 8px) calc(50% + 1px);
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* 펼쳐진 목록은 OS가 그리지만 Chromium이 이 색을 따라준다.
+   지정하지 않으면 흰 배경에 검은 글씨로 떠서 위젯과 전혀 안 어울린다. */
+select option {
+  background: #1b1e27;
+  color: var(--text);
+}
+
+input[type='checkbox'],
+input[type='range'] {
+  accent-color: var(--accent);
+  padding: 0;
+}
+
+input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+}
+
+/* ── 스크롤바 ──────────────────────────────────────────────────────────────
+   기본 스크롤바는 불투명한 띠라 반투명 위젯 위에서 도드라진다.
+   트랙을 완전히 투명하게 두고, 막대만 배경 위에 얇게 떠 있게 만든다. */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 15%);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 30%);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgb(255 255 255 / 40%);
+  background-clip: padding-box;
+}

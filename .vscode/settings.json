@@ -1,0 +1,12 @@
+{
+  // VS Code 확장 호스트가 자식 프로세스에 ELECTRON_RUN_AS_NODE=1 을 상속시킨다.
+  // 이 값이 남아 있으면 `npm run dev` 로 띄운 Electron이 평범한 Node로 실행되어
+  // require('electron') 이 API 객체 대신 실행 파일 경로 문자열을 돌려주고,
+  // app.requestSingleInstanceLock() 에서 "Cannot read properties of undefined" 로 죽는다.
+  // null 을 주면 터미널 환경에서 해당 변수를 제거한다.
+  "terminal.integrated.env.windows": {
+    "ELECTRON_RUN_AS_NODE": null
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.eol": "\n"
+}
