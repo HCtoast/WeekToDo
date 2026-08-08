@@ -91,6 +91,7 @@ src/
 - **`body` 배경**: 불투명하면 OS 재질과 둥근 모서리가 죽는다. 배경색은 항상 `.widget` 쪽에만 준다.
 - **`ready-to-show`가 안 올 수 있다**: `show: false`로 만든 창을 이 이벤트에서만 띄우면, 이벤트가 유실될 때 위젯이 조용히 영영 안 뜬다(트레이 말고는 되살릴 길이 없다). `did-finish-load`에서도 한 번 더 `show()`를 부르는 안전장치를 둔다.
 - **`ul`/`ol` 기본 패딩**: `list-style: none`만 주면 글머리 기호는 사라져도 `padding-inline-start: 40px`이 남아 목록 전체가 오른쪽으로 밀린다. 전역에서 `padding: 0`으로 지운다.
+- **Windows에는 "항상 맨 아래"가 없다**: Electron에 `alwaysOnBottom`이 없고 Windows에도 그런 창 레벨이 없다. 진짜 최하단은 창을 바탕화면(`WorkerW`)의 자식으로 붙여야 하는데(`electron-as-wallpaper` 류), 그러면 클릭·키보드가 통째로 막혀 체크박스 하나 못 누르는 위젯이 된다. **항상 위(`WS_EX_TOPMOST`)를 끄는 것만으로 목적은 달성된다** — 지금 쓰는 창이 곧 맨 위이므로 다른 앱이 위젯에 가려지지 않는다. 배경화면 앱(Wallpaper Engine)은 `WorkerW`에 그리므로 보통 창인 위젯은 언제나 그 위다.
 - **`setIgnoreMouseEvents`는 창 전체에 걸린다**: 영역별 제외가 없으므로, 되돌릴 수단(설정 버튼·설정창)까지 통과시키면 위젯을 영영 못 만지게 된다. `forward: true`로 이동 이벤트만 받아 포인터가 그 영역 위에 있는 동안만 무시를 해제한다 (`useClickThroughEscape`).
 - **flex 컨테이너 안의 `position: sticky`**: `align-items`가 기본값(stretch)이면 날짜 열이 스크롤 뷰 높이로 늘어나고, sticky 헤더는 부모 박스를 벗어나지 못해 하루치를 다 스크롤하기 전에 밀려 올라간다. 열이 내용 높이를 갖게 해야 한다.
 - **ESM 전용 패키지**: 메인/프리로드는 CJS로 번들되므로 ESM 전용 패키지를 `require`하면 `X is not a constructor`로 죽는다 (`electron-store` v11에서 겪음). CJS 버전을 쓰거나 동적 import 할 것.
@@ -186,6 +187,7 @@ PATCH가 성공하면 **동기화를 다시 돌려** 구글이 실제로 저장�
 | 드래그 이동 단위 | 15/30/60분 | **10~50분** 중 선택 (기본 30) |
 | 위젯 위치 저장 | `{x,y,width,height}` 하나 | **위치는 하나, 크기는 모드별로.** 크기 모드를 바꿔도 좌상단은 고정 |
 | 배경 | `widgetOpacity` + `widgetBlurRadius` | `backgroundEffect`(유리/그대로 비침) + `widgetOpacity`(틴트). 흐림은 OS가 그리므로 `widgetBlurRadius`는 폐기 |
+| 창 층 | 항상 위 고정 | `windowLayer` — 기본은 **`desktop`**(바탕화면 위·앱 아래). `top`도 설정에서 고를 수 있다 |
 | `anchors.source` | `'manual' \| 'fixed'` | `'manual' \| 'autostart'` (`fixed`는 행 없이 파생되므로 저장 안 함) |
 | `local_events` 소속 | `anchor_id NOT NULL` | `anchor_id` 제거, `date TEXT NOT NULL` |
 | TODO 이월 위치 | "다음 날 큐의 맨 앞" | **다음 날 앵커 시각에 붙임** (duration 유지, 여러 개면 앵커부터 순차) |

@@ -27,6 +27,7 @@ const WINDOW_SETTING_KEYS = new Set<SettingKey>([
   'clickThrough',
   'uiScale',
   'backgroundEffect',
+  'windowLayer',
 ])
 import { seedSampleDay } from '@main/dev-seed'
 import { applySizeMode, applyWidgetMode, getWidgetWindow, setInteractive } from '@main/window'
@@ -96,7 +97,7 @@ export function registerIpcHandlers(): void {
      */
     if (WINDOW_SETTING_KEYS.has(key)) {
       const s = getAllSettings()
-      applyWidgetMode(s.widgetMode, s.clickThrough, s.uiScale, s.backgroundEffect)
+      applyWidgetMode(s.widgetMode, s.clickThrough, s.uiScale, s.backgroundEffect, s.windowLayer)
     }
   })
 
@@ -139,7 +140,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.windowApply, () => {
     const s = getAllSettings()
-    applyWidgetMode(s.widgetMode, s.clickThrough, s.uiScale, s.backgroundEffect)
+    applyWidgetMode(s.widgetMode, s.clickThrough, s.uiScale, s.backgroundEffect, s.windowLayer)
   })
 
   ipcMain.handle(IPC.windowSizeMode, (e, sizeMode: WidgetSizeMode) => {

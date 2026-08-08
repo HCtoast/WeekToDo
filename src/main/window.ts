@@ -1,6 +1,11 @@
 ﻿import { join } from 'node:path'
 import { BrowserWindow, screen, shell } from 'electron'
-import type { BackgroundEffect, WidgetMode, WidgetSizeMode } from '@shared/settings-schema'
+import type {
+  BackgroundEffect,
+  WidgetMode,
+  WidgetSizeMode,
+  WindowLayer,
+} from '@shared/settings-schema'
 import { getAllSettings, getSetting, setSetting } from '@main/db/repositories/settings'
 import { appIconPath } from '@main/resources'
 
@@ -126,15 +131,38 @@ function recreateWindow(): void {
   createWidgetWindow()
 }
 
+/**
+ * 창을 어느 층에 둘지 적용한다.
+ *
+ * - `top`: 'screen-saver' 레벨로 올려 전체화면 앱 위에서도 유지된다.
+ * - `desktop`: 보통 창이 된다 — 바탕화면(움직이는 배경화면 포함) 위, 지금 쓰는 앱 아래.
+ *
+ * Windows에는 "항상 맨 아래"가 없다. 진짜 최하단은 창을 바탕화면(WorkerW)의 자식으로
+ * 붙여야 하는데(`electron-as-wallpaper` 류), 그러면 클릭·키보드가 통째로 막혀
+ * 체크박스 하나 못 누르는 위젯이 된다. 항상 위를 끄는 것만으로 "쓰고 있는 앱이 위"라는
+ * 목적은 달성되므로 여기까지만 한다.
+ */
+function applyLayer(layer: WindowLayer): void {
+  if (!win || win.isDestroyed()) return
+
+  if (layer === 'top') {
+    win.setAlwaysOnTop(true, 'screen-saver')
+  } else {
+    win.setAlwaysOnTop(false)
+  }
+}
+
 export function applyWidgetMode(
   mode: WidgetMode,
   clickThrough: boolean,
   uiScale = 100,
   backgroundEffect: BackgroundEffect = 'acrylic',
+  layer: WindowLayer = 'desktop',
 ): void {
   if (!win || win.isDestroyed()) return
   win.setResizable(mode === 'move')
   win.setMovable(mode === 'move')
+  applyLayer(layer)
 
   /*
    * 배경 효과·배율은 창을 다시 만들어 적용한다 (위 appliedEffect 주석 참고).
@@ -230,8 +258,8 @@ export function createWidgetWindow(): BrowserWindow {
      * `title: ''`만으로는 페이지 <title>이 덮어쓰므로 setTitle로 한 번 더 지운다.
      */
     title: '',
-    // 다른 앱을 클릭해도 위젯이 뒤로 가지 않게 한다.
-    alwaysOnTop: true,
+    // 층은 설정을 따른다 (항상 위 / 바탕화면 위·앱 아래). 아래 applyLayer가 확정한다.
+    alwaysOnTop: settings.windowLayer === 'top',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -252,11 +280,15 @@ export function createWidgetWindow(): BrowserWindow {
     },
   })
 
-  // 'screen-saver' 레벨이라야 전체화면 앱 위에서도 유지된다.
-  win.setAlwaysOnTop(true, 'screen-saver')
   // 가상 데스크톱을 전환해도 따라오게 한다.
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  applyWidgetMode(settings.widgetMode, settings.clickThrough, settings.uiScale, settings.backgroundEffect)
+  applyWidgetMode(
+    settings.widgetMode,
+    settings.clickThrough,
+    settings.uiScale,
+    settings.backgroundEffect,
+    settings.windowLayer,
+  )
 
   /*
    * `ready-to-show`는 첫 페인트가 끝나야 오는데, 안 오는 경우가 있다.
@@ -264,7 +296,14 @@ export function createWidgetWindow(): BrowserWindow {
    * 로드가 끝나면 무조건 한 번 더 띄운다 (이미 보이면 show는 무해하다).
    */
   const reveal = (): void => {
-    if (win && !win.isDestroyed() && !win.isVisible()) win.show()
+    if (!win || win.isDestroyed() || win.isVisible()) return
+    /*
+     * 바탕화면 층일 때는 포커스를 뺏지 않고 띄운다.
+     * 부팅 자동 실행이라 사용자가 이미 다른 일을 하고 있을 수 있는데,
+     * 그때 위젯이 앞으로 튀어나와 포커스를 가져가면 "배경과 한몸"이라는 성격에 어긋난다.
+     */
+    if (settings.windowLayer === 'desktop') win.showInactive()
+    else win.show()
   }
   win.on('ready-to-show', reveal)
   win.webContents.on('did-finish-load', reveal)

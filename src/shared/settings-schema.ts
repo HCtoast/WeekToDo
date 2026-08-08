@@ -26,6 +26,12 @@ export type WidgetMode = 'fixed' | 'move'
  */
 export type BackgroundEffect = 'acrylic' | 'clear'
 export type WidgetSizeMode = 'small' | 'large'
+/**
+ * 창을 어느 층에 둘지.
+ * - `top`: 항상 다른 창 위 (기본 위젯 동작)
+ * - `desktop`: 보통 창처럼 — 바탕화면(움직이는 배경화면 포함) 위, 쓰고 있는 앱 아래
+ */
+export type WindowLayer = 'top' | 'desktop'
 export type MoveUnitMinutes = (typeof MOVE_UNIT_CHOICES)[number]
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 
@@ -73,6 +79,8 @@ export interface AppSettings {
   widgetSize: WidgetSizes
   widgetMode: WidgetMode
   widgetSizeMode: WidgetSizeMode
+  /** 항상 위에 띄울지, 바탕화면 위·앱 아래에 둘지 */
+  windowLayer: WindowLayer
   /**
    * 고정 모드에서 마우스 입력을 통과시켜 완전히 배경처럼 만든다.
    * 고정 모드와 묶지 않고 따로 둔 이유: 묶으면 고정 모드에서 체크 하나 못 하게 된다.
@@ -132,6 +140,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   widgetSize: { small: null, large: null },
   widgetMode: 'fixed',
   widgetSizeMode: 'small',
+  windowLayer: 'desktop',
   clickThrough: false,
   weekdayAnchorTimes: {
     mon: '19:00',
@@ -217,6 +226,8 @@ function isValid<K extends SettingKey>(key: K, v: unknown): v is AppSettings[K] 
       return v === 'acrylic' || v === 'clear'
     case 'widgetSizeMode':
       return v === 'small' || v === 'large'
+    case 'windowLayer':
+      return v === 'top' || v === 'desktop'
     case 'weekdayAnchorTimes':
       return (
         typeof v === 'object' &&

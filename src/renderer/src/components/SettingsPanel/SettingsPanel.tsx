@@ -7,6 +7,7 @@ import {
   type MoveUnitMinutes,
   type WeekStartMode,
   type Weekday,
+  type WindowLayer,
 } from '@shared/settings-schema'
 import { ANCHOR_STEP_MINUTES, MOVE_UNIT_CHOICES } from '@shared/constants'
 import { ESCAPE_ATTR } from '@renderer/hooks/useClickThroughEscape'
@@ -143,6 +144,23 @@ export default function SettingsPanel({
             onChange={(e) => onSet('widgetOpacity', Number(e.target.value))}
           />
           <span className="unit">{settings.widgetOpacity}%</span>
+        </Row>
+
+        <Row
+          label="창 층"
+          hint={
+            settings.windowLayer === 'top'
+              ? '전체화면 앱 위에서도 유지됩니다.'
+              : '바탕화면(움직이는 배경화면 포함) 위, 지금 쓰는 앱 아래. 다른 앱을 가리지 않습니다.'
+          }
+        >
+          <select
+            value={settings.windowLayer}
+            onChange={(e) => onSet('windowLayer', e.target.value as WindowLayer)}
+          >
+            <option value="desktop">배경 위 (앱에 가려짐)</option>
+            <option value="top">항상 위</option>
+          </select>
         </Row>
 
         <Row label="클릭 통과" hint="고정 모드에서 마우스를 통과시켜 완전히 배경처럼 만든다.">
