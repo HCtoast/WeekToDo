@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "rebuild": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder --win",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "llm:try": "electron-vite dev -- --llm-try"
   },
   "build": {
     "appId": "kr.jaewon.weektodo-widget",

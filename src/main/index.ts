@@ -12,6 +12,7 @@ import { runRollover } from '@main/jobs/rollover'
 import { startDayBoundaryJob, stopDayBoundaryJob } from '@main/jobs/day-boundary'
 import { startGoogleSync, stopGoogleSync } from '@main/google'
 import { seedSampleDay } from '@main/dev-seed'
+import { formatHarness, parseHarnessArgs, runHarness } from '@main/llm/harness'
 
 /*
  * 데이터 폴더를 이름에 기대지 않고 못 박는다.
@@ -23,8 +24,25 @@ import { seedSampleDay } from '@main/dev-seed'
  */
 app.setPath('userData', join(app.getPath('appData'), 'weektodo-widget'))
 
-// 위젯은 하나만 떠야 한다. 두 번째 실행은 기존 창을 띄우고 종료.
-if (!app.requestSingleInstanceLock()) {
+/*
+ * 개발용 자연어 명령 하네스는 **단일 인스턴스 잠금보다 먼저** 갈라낸다.
+ *
+ * 위젯을 띄워둔 채로 돌리는 것이 보통인데, 잠금에 걸리면 그대로 종료되어
+ * 아무것도 못 해본다. 창을 만들지 않고 DB도 읽기만 하므로(dry-run) 같이 떠 있어도 된다.
+ */
+// `import.meta.env.DEV`는 **빌드 시점 상수**라, 설치본 번들에서는 이 블록도
+// 하네스 import도 통째로 사라진다. 실행 시 가드(app.isPackaged)만으로는 코드가 남는다.
+const harness = import.meta.env.DEV ? parseHarnessArgs(process.argv) : null
+
+if (harness) {
+  void app.whenReady().then(() => {
+    getDb()
+    return runHarness(harness.inputs, harness.repeat, harness.apply)
+      .then((cases) => console.log(formatHarness(cases, harness.apply)))
+      .catch((e) => console.error('하네스 실패:', e))
+      .finally(() => app.exit(0))
+  })
+} else if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => {

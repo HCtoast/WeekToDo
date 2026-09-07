@@ -9,7 +9,24 @@ import { getAllSettings } from '@main/db/repositories/settings'
  * 로직이 핸들러 안에 있으면 두 벌이 되어 한쪽만 고치는 사고가 난다.
  * 여기가 쓰기의 유일한 입구다.
  */
+/**
+ * 쓰기를 가로채는 함수. `null`이면 평소대로 DB에 쓴다.
+ *
+ * 자연어 명령 하네스(`--llm-try`)의 dry-run 전용이다. 모델이 **어떤 도구를 어떤 인자로**
+ * 부르는지만 보고 싶을 때, 실제 일정을 건드리지 않고 기록만 남기기 위한 것.
+ * 개발 경로에서만 켜지며 설치본에서는 아무도 부르지 않는다.
+ */
+let interceptor: ((m: Mutation) => void) | null = null
+
+export function setMutationInterceptor(fn: ((m: Mutation) => void) | null): void {
+  interceptor = fn
+}
+
 export function applyMutation(m: Mutation): void {
+  // 빌드 시점 상수라 설치본에서는 이 분기 자체가 사라진다 —
+  // 쓰기의 유일한 입구에 개발용 훅이 남아 있으면 안 된다.
+  if (import.meta.env.DEV && interceptor) return interceptor(m)
+
   switch (m.type) {
     case 'localEvent.create':
       return schedule.createLocalEvent(m)
