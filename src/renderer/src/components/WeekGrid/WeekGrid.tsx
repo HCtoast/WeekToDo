@@ -293,8 +293,9 @@ export default function WeekGrid({
     }
 
     const onUp = () => {
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
       setDraft((current) => {
         if (current?.kind === 'reorder') {
           void mutate({ type: 'localEvent.reorder', date, orderedIds: current.orderedIds })
@@ -303,8 +304,19 @@ export default function WeekGrid({
       })
     }
 
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerup', onUp)
+    /*
+     * 리스너는 **window**에 붙인다.
+     *
+     * 블록 DOM에 붙였더니, 드래그로 날짜 열을 넘어가는 순간 그 노드가 React에서
+     * 언마운트되면서 pointerup을 영영 못 받았다. draft가 남아 블록이 반투명한 채로
+     * 굳어버린다. window는 사라지지 않는다.
+     *
+     * pointercancel도 함께 받는다 — 창이 포커스를 잃거나 OS가 제스처를 가져가면
+     * pointerup 없이 이것만 온다.
+     */
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
 
   // ── 소요시간 리사이즈 ──────────────────────────────────────────────────────
@@ -320,8 +332,9 @@ export default function WeekGrid({
     }
 
     const onUp = () => {
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
       setDraft((current) => {
         if (current?.kind === 'resize') {
           void mutate({
@@ -334,8 +347,19 @@ export default function WeekGrid({
       })
     }
 
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerup', onUp)
+    /*
+     * 리스너는 **window**에 붙인다.
+     *
+     * 블록 DOM에 붙였더니, 드래그로 날짜 열을 넘어가는 순간 그 노드가 React에서
+     * 언마운트되면서 pointerup을 영영 못 받았다. draft가 남아 블록이 반투명한 채로
+     * 굳어버린다. window는 사라지지 않는다.
+     *
+     * pointercancel도 함께 받는다 — 창이 포커스를 잃거나 OS가 제스처를 가져가면
+     * pointerup 없이 이것만 온다.
+     */
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
 
   /*
@@ -374,8 +398,9 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
     }
 
     const onUp = () => {
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
       setDraft((current) => {
         if (current?.kind === 'moveFixed') {
           const patch = {
@@ -393,8 +418,19 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
       })
     }
 
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerup', onUp)
+    /*
+     * 리스너는 **window**에 붙인다.
+     *
+     * 블록 DOM에 붙였더니, 드래그로 날짜 열을 넘어가는 순간 그 노드가 React에서
+     * 언마운트되면서 pointerup을 영영 못 받았다. draft가 남아 블록이 반투명한 채로
+     * 굳어버린다. window는 사라지지 않는다.
+     *
+     * pointercancel도 함께 받는다 — 창이 포커스를 잃거나 OS가 제스처를 가져가면
+     * pointerup 없이 이것만 온다.
+     */
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
 
   /** 백로그에서 끌어다 놓으면 그 시각에 슬롯이 생기며 그리드로 승격된다. */

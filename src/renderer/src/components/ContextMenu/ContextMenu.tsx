@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Anchor,
   CalendarDays,
@@ -90,6 +90,28 @@ export default function ContextMenu({
    */
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null)
 
+  /**
+   * 항목을 골라 **다음 화면으로 넘어가는 중**이라는 표시.
+   *
+   * Radix는 항목을 고르면 메뉴를 닫고 `onOpenChange(false)`를 부른다. 거기서 그대로
+   * `onClose()`를 하면 부모가 이 컴포넌트를 통째로 언마운트해서, 이어서 떠야 할
+   * 입력 줄이나 모달이 뜨기도 전에 사라진다 (실제로 "이 시각에 TODO"가 먹통이었다).
+   *
+   * 상태로 판단하면 안 된다 — 상태 갱신이 반영되기 전에 `onOpenChange`가 올 수 있다.
+   * ref는 그 자리에서 바뀌므로 순서에 기대지 않는다.
+   */
+  const goingElsewhere = useRef(false)
+
+  const openPrompt = (kind: 'todo' | 'event' | 'google'): void => {
+    goingElsewhere.current = true
+    setPrompt(kind)
+  }
+
+  const confirmDelete = (target: { id: string; title: string }): void => {
+    goingElsewhere.current = true
+    setPendingDelete(target)
+  }
+
   const run = (m: Mutation): void => {
     void mutate(m)
     onClose()
@@ -166,10 +188,11 @@ export default function ContextMenu({
     <>
       <DropdownMenu
         open={pendingDelete === null}
-        // 바깥 클릭·Esc로 닫히면 그대로 메뉴를 없앤다.
-        // 삭제 확인으로 넘어가는 경우는 pendingDelete가 먼저 차므로 여기 오지 않는다.
         onOpenChange={(open) => {
-          if (!open && pendingDelete === null) onClose()
+          if (open) return
+          // 다음 화면으로 넘어가는 중이면 닫지 않는다. 아니면 바깥 클릭·Esc이므로 끝낸다.
+          if (goingElsewhere.current) return
+          onClose()
         }}
         // 위젯은 늘 떠 있는 창이라 body의 포인터 이벤트를 잠그지 않는다.
         modal={false}
@@ -187,14 +210,14 @@ export default function ContextMenu({
               moveUnitMinutes={moveUnitMinutes}
               icon={icon}
               run={run}
-              onPrompt={setPrompt}
+              onPrompt={openPrompt}
             />
           ) : (
             <BlockItems
               block={state.target.block}
               icon={icon}
               run={run}
-              onConfirmDelete={setPendingDelete}
+              onConfirmDelete={confirmDelete}
               onOpenDetail={(id) => {
                 onOpenDetail(id)
                 onClose()
