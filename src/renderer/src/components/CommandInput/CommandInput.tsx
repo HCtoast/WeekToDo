@@ -10,6 +10,25 @@ import './CommandInput.css'
  * 예외는 아무 일도 일어나지 않았을 때뿐이다. 그때는 왜인지 알려주지 않으면
  * 사용자가 "먹통"으로 오해한다.
  */
+/** 알림 한 줄의 최대 길이. 넘으면 잘라낸다 — 이 창은 입력 한 줄이 전부다. */
+const NOTICE_MAX = 120
+
+/**
+ * 화면에 띄울 한 줄로 다듬는다.
+ *
+ * 프롬프트가 "한 문장, 마크다운 없이"라고 지시하지만 모델은 지키지 않을 때가 있다.
+ * 실제로 굵게 표시와 빈 줄이 섞인 세 문장이 통째로 들어와 창을 밀어낸 적이 있다.
+ * 규칙을 어겨도 창이 무너지지 않도록 여기서 한 번 더 막는다.
+ */
+function toNotice(raw: string | undefined): string {
+  const flat = (raw ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/\*\*/g, '')
+    .trim()
+  if (!flat) return '아무 일도 일어나지 않았습니다.'
+  return flat.length > NOTICE_MAX ? flat.slice(0, NOTICE_MAX - 1) + '…' : flat
+}
+
 export default function CommandInput() {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -39,7 +58,7 @@ export default function CommandInput() {
         return
       }
       // 아무것도 못 했거나 일부 실패했을 때만 이유를 남기고 창을 띄워둔다.
-      setNotice(failed[0]?.summary ?? result.text ?? '아무 일도 일어나지 않았습니다.')
+      setNotice(toNotice(failed[0]?.summary ?? result.text))
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e)
       // IPC를 건너온 오류는 `Error invoking remote method '...': Error: ...`로 감싸여 온다.
