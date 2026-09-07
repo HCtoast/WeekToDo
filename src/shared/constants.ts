@@ -105,6 +105,12 @@ export const LLM_CONTEXT_PAST_DAYS = 1
 export const LLM_CONTEXT_FUTURE_DAYS = 13
 
 /**
+ * 명령 로그 파일이 이 크기를 넘으면 `.1.jsonl`로 한 번 밀어내고 새로 시작한다.
+ * 세대는 둘뿐이다 — 이 로그는 "방금 왜 저렇게 됐지"를 보는 용도지 감사 기록이 아니다.
+ */
+export const LLM_LOG_MAX_BYTES = 1024 * 1024
+
+/**
  * 겹친 TODO 슬롯을 얼마나 밀어서 쌓을지 (px).
  *
  * 열을 반씩 나누면 30분짜리 블록이 제목도 시각도 못 보여준다.

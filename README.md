@@ -90,6 +90,16 @@ Node 20+ 와 Windows 빌드 도구가 필요하다 (`better-sqlite3`가 네이�
 명령 창은 **대화가 아니다.** 답변 말풍선도 결과 로그도 없고, 피드백은 위젯이 실제로
 바뀌는 것으로 준다. 애매해도 되묻지 않고 가장 그럴듯한 해석으로 바로 실행한다.
 
+그래서 화면에는 흔적이 남지 않는다. 어긋난 해석을 되짚으려면 `logs/llm-log.jsonl`을 본다 (개발 중. 설치본은 %APPDATA%) —
+명령 한 번이 한 줄이고, 모델이 어떤 도구를 어떤 인자로 불렀는지, 토큰을 얼마나 썼는지가 들어 있다.
+
+```powershell
+Get-Content logs\llm-log.jsonl -Tail 1 | ConvertFrom-Json | ConvertTo-Json -Depth 6
+```
+
+시스템 프롬프트 전문은 일정 스냅샷 때문에 수 KB라 기본적으로 빼둔다.
+프롬프트를 손보는 동안에만 `WEEKTODO_LLM_LOG_PROMPT=1`로 켠다.
+
 ```
 내일 저녁 8시에 캡스톤 미팅 1시간
 오늘 앵커 8시로

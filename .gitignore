@@ -32,3 +32,6 @@ client_secret*.json
 
 # 확인용 스크린샷 (로컬 전용)
 screenshot/
+
+# LLM 명령 로그 (개발 중에만 여기 쌓인다 — 설치본은 %APPDATA%)
+logs/

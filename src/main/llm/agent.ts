@@ -6,6 +6,7 @@ import {
 } from '@shared/constants'
 import type { CommandAction, CommandResult } from '@shared/ipc-contract'
 import { TOOLS, runTool } from '@main/llm/tools'
+import { traceRound, type CommandTrace } from '@main/llm/log'
 
 /**
  * Anthropic Messages API 호출과 도구 루프.
@@ -28,6 +29,8 @@ export interface ApiMessage {
 interface ApiResponse {
   content: ContentBlock[]
   stop_reason: string | null
+  /** 로그에만 쓴다. 키가 사용자 것이므로 얼마나 썼는지 되짚을 수 있어야 한다 */
+  usage?: { input_tokens: number; output_tokens: number }
 }
 
 async function callApi(
@@ -81,14 +84,31 @@ export async function runConversation(
   model: string,
   system: string,
   messages: ApiMessage[],
+  trace?: CommandTrace,
 ): Promise<CommandResult> {
   const actions: CommandAction[] = []
 
   for (let round = 0; round < LLM_MAX_TOOL_ROUNDS; round++) {
+    const startedAt = Date.now()
     const res = await callApi(apiKey, model, system, messages)
     messages.push({ role: 'assistant', content: res.content })
 
     const toolUses = res.content.filter((b) => b.type === 'tool_use')
+
+    if (trace) {
+      traceRound(trace, {
+        ms: Date.now() - startedAt,
+        stopReason: res.stop_reason,
+        usage: res.usage
+          ? { input: res.usage.input_tokens, output: res.usage.output_tokens }
+          : null,
+        text: textOf(res.content),
+        toolUses: toolUses.map((b) =>
+          b.type === 'tool_use' ? { name: b.name, input: b.input } : { name: '?', input: null },
+        ),
+      })
+    }
+
     if (toolUses.length === 0) return { text: textOf(res.content), actions }
 
     const results: ContentBlock[] = []

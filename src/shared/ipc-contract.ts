@@ -260,6 +260,8 @@ export interface LlmStatus {
   /** 어떤 키를 넣었는지 알아보기 위한 마지막 네 자리 */
   apiKeyHint: string | null
   credentialsPath: string
+  /** 명령 로그(JSONL) 경로 — 명령이 왜 그렇게 해석됐는지 되짚을 때 연다 */
+  logPath: string
 }
 
 /** 도구 한 번의 실행 기록 */

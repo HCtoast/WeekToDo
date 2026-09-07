@@ -4,12 +4,14 @@ import { getAllSettings } from '@main/db/repositories/settings'
 import { getApiKey, getApiKeyHint, getLlmCredentialsPath } from '@main/llm/credentials'
 import { runConversation } from '@main/llm/agent'
 import { buildSnapshot, defaultRange } from '@main/llm/tools'
+import { failTrace, finishTrace, getLlmLogPath, startTrace } from '@main/llm/log'
 
 export function getLlmStatus(): LlmStatus {
   return {
     hasApiKey: getApiKey() !== null,
     apiKeyHint: getApiKeyHint(),
     credentialsPath: getLlmCredentialsPath(),
+    logPath: getLlmLogPath(),
   }
 }
 
@@ -35,9 +37,24 @@ export async function runCommand(rawText: string): Promise<CommandResult> {
     ? settings.llmModel
     : DEFAULT_LLM_MODEL
 
-  return runConversation(apiKey, model, buildSystemPrompt(), [
-    { role: 'user', content: [{ type: 'text', text }] },
-  ])
+  // 프롬프트는 한 번만 만든다 — 로그에 남기는 것과 모델에게 보내는 것이 같아야 한다.
+  const system = buildSystemPrompt()
+  const trace = startTrace(model, text, system)
+
+  try {
+    const result = await runConversation(
+      apiKey,
+      model,
+      system,
+      [{ role: 'user', content: [{ type: 'text', text }] }],
+      trace,
+    )
+    finishTrace(trace, result)
+    return result
+  } catch (e) {
+    failTrace(trace, e)
+    throw e
+  }
 }
 
 /**
@@ -58,10 +75,52 @@ function buildSystemPrompt(): string {
 
 - 확인 질문을 하지 마십시오. 되물어도 사용자는 읽을 수 없고 아무 일도 일어나지 않습니다.
 - 애매해도 **가장 그럴듯한 해석 하나를 골라 즉시 실행**합니다. 결과가 틀리면 사용자가 다시 치거나 직접 끌어서 고칩니다.
-- 오전/오후가 불분명하면 사용자의 생활 패턴(하루 시작 ${settings.dayStartHour}시, 올빼미형)에 맞춰 저녁 쪽으로 해석합니다. "3시"는 대개 오후 3시, "10시"는 대개 밤 10시입니다.
-- 날짜를 말하지 않았으면 오늘로 봅니다. 이미 지난 시각을 말했으면 내일로 봅니다.
+- 날짜를 말하지 않았으면 오늘로 봅니다.
 - 여러 일을 한 줄에 말하면(예: "7~8시 밥 8~10 과제") 전부 도구 호출로 나눠 한 번에 처리합니다.
-- 도구를 하나도 부르지 않고 끝내는 경우는 **정말로 할 수 있는 일이 없을 때뿐**입니다. 그때만 한 문장으로 이유를 적습니다 (그 문장은 사용자에게 보입니다).
+- **후보가 여럿이어도 묻지 않습니다.** 같은 제목이 여러 개면 **시각이 가장 이른 것**을 고릅니다. "어느 것을 말하는지 알려달라"는 답은 금지입니다 — 사용자는 그 문장을 읽고 답할 수단이 없습니다.
+- **id를 물어보지 마십시오.** 아래 스냅샷의 모든 블록에 \`id\`가 들어 있고, TODO 블록에는 \`todoId\`도 함께 있습니다. 필요한 id는 이미 손에 있습니다.
+- 도구를 하나도 부르지 않고 끝내는 경우는 **정말로 할 수 있는 일이 없을 때뿐**입니다. 그때만 **한 문장**으로 이유를 적습니다. 마크다운(\*\*굵게\*\*, 목록, 줄바꿈)을 쓰지 마십시오 — 한 줄짜리 좁은 입력창에 그대로 들어갑니다.
+
+## 무엇을 고칠지 고르는 법 (수정에서 가장 많이 틀린다)
+
+바꾸려는 블록의 \`kind\`를 **먼저 확인**하고 그 줄의 도구를 씁니다. 종류가 다르면 id도 통하지 않습니다.
+
+| 블록 \`kind\` | 길이를 바꾼다 | 시각·날짜를 옮긴다 | 제목·카테고리·완료 |
+|---|---|---|---|
+| \`local\` (앵커 큐) | \`update_event\`의 \`durationMinutes\` | 순서(\`reorder_events\`)나 앵커(\`set_anchor\`)로 — 절대 시각이 없다 | \`update_event\` |
+| \`todo\` (시각 고정) | \`move_todo_slot\`으로 **끝 시각을 바꾼다** | \`move_todo_slot\` (\`slotId\` = 블록의 \`id\`) | \`update_todo\` (\`id\` = 블록의 \`todoId\`) |
+| \`google\` | 불가 | 불가 | 불가 — 읽기 전용이라고 한 문장 답하고 끝냅니다 |
+
+특히 자주 틀리는 것들입니다.
+
+- **TODO 슬롯에는 "소요시간"이 없습니다.** 시작·종료 시각만 있습니다. "30분으로 줄여줘"는 \`update_todo\`가 아니라 \`move_todo_slot\`으로 끝 시각을 당기는 것입니다. \`update_todo\`에 \`durationMinutes\`를 주면 거절당합니다.
+- **이미 있는 것을 고치라는 말에 새로 만들지 마십시오.** "명조 22시부터 1시간으로"는 기존 명조를 옮기라는 뜻이지 새 명조를 만들라는 뜻이 아닙니다. 스냅샷에 같은 제목이 있으면 먼저 그것을 고칩니다.
+- **시키지 않은 것은 건드리지 마십시오.** 길이만 말했으면 마감·카테고리·완료는 그대로 둡니다.
+- \`update_*\` 도구는 **준 항목만** 바꿉니다. 안 바꿀 것은 아예 빼십시오.
+
+## 도구가 오류를 돌려주면
+
+오류는 대화가 끊긴 게 아닙니다. **읽고 고쳐서 다시 부르십시오.** 메시지에 무엇이 틀렸고 무엇을 쓰라는지 적혀 있습니다.
+
+- "찾을 수 없습니다" → **id를 잘못 짚은 것입니다.** 스냅샷을 다시 보고 그 블록의 \`kind\`를 확인하십시오. TODO를 고칠 때는 \`todoId\`, 슬롯을 옮길 때는 \`id\`입니다. 없는 id를 지어내지 마십시오.
+- "바꿀 내용이 없습니다" → 인자를 빠뜨렸거나, **그 도구로는 못 바꾸는 것을 바꾸려 한 것입니다.** 위 표에서 종류에 맞는 도구를 다시 고르십시오.
+- "없는 인자입니다" → 그 도구의 스키마에 없는 필드입니다. 같은 뜻을 가진 다른 도구가 있는지 보십시오.
+- **같은 호출을 그대로 반복하지 마십시오.** 두 번 연속 같은 이유로 막히면 접근이 틀린 것입니다 — 도구를 바꾸거나, 정말 못 하는 일이면 한 문장으로 이유를 말하고 끝냅니다.
+
+## 시각 해석 절차 (권고가 아니라 순서대로 밟을 것)
+
+"9시", "10시"처럼 **숫자만** 말했을 때는 아래를 순서대로 적용합니다. 감으로 고르지 마십시오.
+
+1. **오전이라고 말했습니까?** ("오전 10시", "아침 10시", "새벽 2시")
+   - 말했으면 → 그대로 오전입니다.
+   - **말하지 않았으면 → 1~11시는 무조건 +12를 합니다.** "10시" → **22:00**, "9시" → 21:00, "3시" → 15:00.
+     이 사용자는 올빼미형이라 하루가 ${settings.dayStartHour}시에 시작합니다. 오전 시각을 원했다면 반드시 그렇게 말합니다.
+2. **그렇게 정한 시각이 스냅샷의 \`now\`보다 과거입니까?**
+   - 과거라면 사용자가 지난 일을 지목한 게 아닌 이상 **다음 날**로 넘깁니다.
+   - 이때도 논리적 날짜 기준입니다 (아래 절 참고).
+3. 12시는 애매하므로 **정오(12:00)** 로 봅니다. 자정을 원하면 사용자가 "밤 12시"라고 말합니다.
+
+**과거에 만들어 놓고 넘어가지 마십시오.** 방금 만든 시각이 \`now\`보다 앞이면 1번이나 2번을 빠뜨린 것입니다.
 
 ## "오늘 / 내일"의 기준 (여기서 하루씩 밀리는 사고가 난다)
 
@@ -70,6 +129,8 @@ function buildSystemPrompt(): string {
 - 예: 8월 6일 **새벽 2시**는 아직 ${settings.dayStartHour}시 전이라 논리적으로 "8월 5일"입니다. 이때 사용자가 말하는 "내일"은 8월 7일이 아니라 **8월 6일**입니다.
 - 그래서 **날짜를 직접 더하지 마십시오.** 아래 스냅샷의 각 날짜에 \`relative\`(어제·오늘·내일·모레…)를 붙여 두었으니, 사용자가 말한 단어와 같은 \`relative\`를 가진 날의 \`date\`를 그대로 씁니다.
 - "이번 주 금요일"처럼 요일로 말하면 \`weekday\`가 맞는 날 중 가장 가까운 앞쪽을 고릅니다.
+- **논리적 하루는 ${settings.dayStartHour}시에 시작해 다음 날 ${settings.dayStartHour}시에 끝납니다.** 그러니 오늘의 22시·23시·자정·새벽 2시는 **전부 "오늘"** 입니다. 밤 시각이라고 다음 날짜로 넘기지 마십시오 — 이 그리드에서 "오늘 22시"는 오늘 칸의 아래쪽입니다.
+- 날짜를 바꿔야 하는 경우는 사용자가 **말로** 다른 날을 가리켰을 때뿐입니다("내일", "금요일"). 시각이 늦다는 이유만으로는 절대 넘기지 않습니다.
 
 ## 무엇으로 만들지 고르는 법 (틀리기 쉬우니 먼저 판단할 것)
 
@@ -102,6 +163,9 @@ ${Object.entries(settings.weekdayAnchorTimes)
 ## 현재 상태 (${startDate} ~ ${endDate})
 
 \`today\`가 논리적 오늘이고, \`now\`는 참고용 벽시계입니다. 날짜 판단은 \`days[].relative\`를 보고 합니다.
+
+**이 아래가 지금 일정의 전부입니다.** 블록마다 \`id\`가, TODO에는 \`todoId\`가 함께 있습니다.
+이 범위 안의 일을 하는 데는 \`get_schedule\`을 부를 필요가 없습니다 — 같은 것을 한 번 더 받는 왕복일 뿐입니다.
 
 ${snapshot}`
 }
