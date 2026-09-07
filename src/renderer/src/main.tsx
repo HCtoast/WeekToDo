@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '@renderer/App'
 import CommandInput from '@renderer/components/CommandInput/CommandInput'
+/* hctoast(디자인 토큰·유틸리티)를 먼저, global.css를 나중에.
+   global.css의 body 규칙은 레이어 밖이라 Tailwind의 @layer base보다 항상 우선한다 —
+   유리 배경(body { background: transparent })이 덮이지 않는다. */
+import '@renderer/styles/hctoast.css'
 import '@renderer/styles/global.css'
 
 /**

@@ -1,6 +1,7 @@
 import type { Database } from 'better-sqlite3'
 import init001 from './migrations/001_init.sql?raw'
 import googleAllDay002 from './migrations/002_google_all_day.sql?raw'
+import categoryPalette003 from './migrations/003_category_palette.sql?raw'
 
 interface Migration {
   version: number
@@ -15,6 +16,7 @@ interface Migration {
 const MIGRATIONS: Migration[] = [
   { version: 1, name: '001_init', sql: init001 },
   { version: 2, name: '002_google_all_day', sql: googleAllDay002 },
+  { version: 3, name: '003_category_palette', sql: categoryPalette003 },
 ]
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version

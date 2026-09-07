@@ -1,0 +1,267 @@
+/* ============================================================
+   HCToast UI 토큰 — WeekToDo 이식본
+   원본: https://github.com/HCtoast/hctoast-ui (registry/theme.css)
+
+   원본과 의도적으로 다른 점 (이 앱의 제약 때문):
+   1. 다크 단일 테마. day / night-blue / prefers-color-scheme 블록을 뺐다.
+      이 위젯은 유리 배경 위 다크 전용이라 라이트 모드 개념이 없다.
+   2. 동작색을 라임(#c9d96b)이 아니라 **이 앱의 기존 파란 accent(#7cb2ff)**로 둔다.
+      토큰 이름은 원본 그대로라 컴포넌트 코드는 손대지 않아도 된다.
+   3. 원본의 `@layer base { body { background-color: var(--bg) } }`를 가져오지 않는다.
+      body가 불투명해지면 OS(acrylic)가 그리는 유리가 가려진다 — global.css 참고.
+   4. 포커스 링·::selection은 전역이 아니라 `.hct` 안으로 스코프했다.
+      WeekGrid 같은 기존 UI의 네이티브 컨트롤 스타일을 건드리지 않기 위함.
+   5. 면(surface) 값은 원본의 불투명 색 대신 이 앱의 유리 팔레트에 맞춘 값.
+   ============================================================ */
+
+@import 'tailwindcss';
+
+/* 렌더러 소스만 스캔한다 (node_modules·main·preload 제외) */
+@source './../';
+
+/* ---------- 시맨틱 토큰 ----------
+   `.hct` 또는 [data-theme="night"] 안에서만 산다. 밖에서는 정의되지 않으므로
+   실수로 bg-surface 같은 걸 위젯 본체에 쓰면 아무것도 안 칠해진다(= 안전한 기본값). */
+.hct,
+[data-theme='night'] {
+  /* 지면 — 이 앱에선 아무것도 칠하지 않는다. 유리는 OS가 그린다. */
+  --bg: transparent;
+  --bg-inset: rgb(0 0 0 / 32%); /* global.css의 --field-bg와 같은 값 */
+
+  /* 패널은 유리 위에 얹히므로 살짝 비치고, 메뉴·모달은 읽혀야 하니 불투명 */
+  --surface: rgb(22 25 34 / 88%);
+  --surface-raised: #1b1e27; /* global.css의 select option 배경과 같은 값 */
+
+  --border: rgb(255 255 255 / 12%); /* global.css --border */
+  --border-strong: rgb(255 255 255 / 22%); /* global.css input:hover */
+
+  --fg: #eceef4; /* global.css --text */
+  --fg-muted: #9aa3b4; /* global.css --text-dim */
+  --fg-subtle: #6b7385;
+  --fg-on-action: #0d1220; /* 밝은 파랑 위 어두운 글자 */
+  --fg-on-danger: #1c130f;
+  --fg-on-solid: #1c130f;
+
+  /* 동작색 = 이 앱의 기존 accent(파랑). 다크라 호버는 더 밝게. */
+  --action: #7cb2ff; /* global.css --accent */
+  --action-hover: #9ac6ff;
+  --action-soft: color-mix(in oklab, #7cb2ff 16%, transparent);
+  --action-ring: color-mix(in oklab, #7cb2ff 50%, transparent);
+  --accent: #7cb2ff;
+
+  /* 상태색은 원본의 다크 값 그대로 */
+  --danger: #f08a7c;
+  --danger-hover: #f4a99d;
+  --warning: #e8b34a;
+  --success: #57c9a8;
+  --info: #8fb0e8;
+
+  --overlay: rgb(0 0 0 / 55%);
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 2px 8px rgb(0 0 0 / 0.45);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 0.55);
+}
+
+/* ---------- Tailwind 유틸리티에 노출 ---------- */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-inset: var(--bg-inset);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-on-action: var(--fg-on-action);
+  --color-fg-on-danger: var(--fg-on-danger);
+  --color-fg-on-solid: var(--fg-on-solid);
+  --color-danger-hover: var(--danger-hover);
+  --color-overlay: var(--overlay);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-soft: var(--action-soft);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
+
+  /* 모서리 — 원본보다 한 단계 작게. 위젯이 좁아서 12px부터 시작하면 뭉툭하다.
+     위젯 자체가 10px(App.css .widget)이라 그 안쪽은 그보다 작아야 한다. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  --shadow-e1: var(--shadow-1);
+  --shadow-e2: var(--shadow-2);
+  --shadow-e3: var(--shadow-3);
+
+  --spacing: 4px;
+
+  --font-sans:
+    'Pretendard Variable', Pretendard, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* 고운바탕은 번들하지 않았다(TTF 16MB, 이 위젯엔 40/32px 제목이 없다).
+     필요해지면 로컬 @font-face로 추가하고 여기만 바꾸면 된다. */
+  --font-display: var(--font-sans);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+}
+
+/* ---------- 타이포 유틸리티 ----------
+   원본과 동일. 위젯이 좁아 실사용은 text-h3 이하가 대부분이다. */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@utility text-h2 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility text-h3 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+@utility text-body-lg {
+  font-size: 17px;
+  line-height: 28px;
+  font-weight: 400;
+}
+@utility text-body {
+  font-size: 15px;
+  line-height: 24px;
+  font-weight: 400;
+}
+@utility text-body-sm {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+}
+@utility text-label {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+}
+@utility text-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+@utility text-code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+@utility text-label-sm {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+}
+@utility text-label-md {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+@utility text-label-lg {
+  font-size: 15px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+@utility icon-sm {
+  inline-size: 16px;
+  block-size: 16px;
+}
+@utility icon-md {
+  inline-size: 18px;
+  block-size: 18px;
+}
+@utility icon-lg {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility transition-base {
+  transition-property: color, background-color, border-color, outline-color, box-shadow, fill, stroke;
+  transition-timing-function: var(--ease-out-soft);
+  transition-duration: var(--duration-base);
+}
+
+/* ---------- 오버레이 모션 ---------- */
+@keyframes hct-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes hct-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes hct-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes hct-pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@utility animate-fade-in {
+  animation: hct-fade-in var(--duration-base) var(--ease-out-soft);
+}
+@utility animate-fade-out {
+  animation: hct-fade-out var(--duration-fast) var(--ease-out-soft);
+}
+@utility animate-pop-in {
+  animation: hct-pop-in var(--duration-base) var(--ease-out-soft);
+}
+@utility animate-pop-out {
+  animation: hct-pop-out var(--duration-fast) var(--ease-out-soft);
+}
+
+/* ---------- 스코프된 베이스 ----------
+   원본은 전역 :where(...)로 걸지만, 여기선 .hct 안쪽으로만 제한한다.
+   기존 위젯의 네이티브 컨트롤(global.css에서 이미 유리 배경에 맞춰 손본 것)을
+   건드리지 않기 위함. */
+.hct :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.hct ::selection {
+  background: var(--action-soft);
+  color: var(--fg);
+}
