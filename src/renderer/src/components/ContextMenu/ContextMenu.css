@@ -1,7 +1,25 @@
-.ctxmenu {
+/*
+ * 메뉴 자체(항목·구분선·hover)는 이제 Radix DropdownMenu + hctoast 토큰이 그린다.
+ * 여기 남은 것은 Radix가 다루지 않는 두 가지뿐이다.
+ *   1. 우클릭 좌표에 놓는 크기 0짜리 앵커
+ *   2. 제목 입력 줄 (메뉴가 아니라 별도 팝업)
+ */
+
+/*
+ * Radix는 트리거의 사각형을 기준으로 메뉴를 놓는다. 우클릭 메뉴에는 트리거가 없으므로
+ * 눌린 좌표에 크기 0짜리 앵커를 세워 그 역할을 시킨다.
+ */
+.ctx-anchor {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 제목 입력 줄. 메뉴 항목 사이에 <input>을 두면 Radix가 키 입력을 가로채므로 따로 띄운다. */
+.ctxmenu-prompt {
   position: fixed;
   z-index: 100;
-  min-width: 170px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -10,61 +28,7 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
 }
 
-.ctx-head {
-  padding: 5px 9px 6px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid var(--border);
-  font-size: 11px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
-}
-
-.ctxmenu button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 9px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.ctxmenu button:hover {
-  background: rgb(255 255 255 / 12%);
-}
-
-.ctxmenu button.danger {
-  color: #ff9a9a;
-}
-
-.ctxmenu button.danger:hover {
-  background: rgb(220 60 60 / 28%);
-  color: #fff;
-}
-
-.ctxmenu hr {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 3px 4px;
-}
-
-.ctx-note {
-  padding: 2px 9px 6px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--text-dim);
-  white-space: normal;
-  max-width: 190px;
-}
-
+/* 폭이 바뀌면 ContextMenu.tsx의 PROMPT_WIDTH도 함께 고칠 것 */
 .ctx-input {
   width: 210px;
   font-size: 13px;
