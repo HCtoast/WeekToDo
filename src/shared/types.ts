@@ -95,6 +95,10 @@ export interface GoogleEventRow {
   /** 1이면 시각이 없는 종일 일정. 밀림 계산에서 제외한다 */
   is_all_day: number
   is_held: number
+  /** 일정별 색 (구글 colorId). 안 칠했으면 null */
+  color_id: string | null
+  /** 그 일정이 속한 캘린더의 기본색 (#rrggbb) */
+  calendar_color: string | null
   created_at_original: Timestamp | null
   last_synced_at: Timestamp
 }

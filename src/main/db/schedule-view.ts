@@ -1,6 +1,7 @@
 import type { DaySchedule, ScheduleData } from '@shared/ipc-contract'
 import type { DateStr } from '@shared/types'
 import { getLogicalDate, resolveAnchor } from '@shared/scheduler'
+import { googleBlockColor } from '@shared/google-colors'
 import { getAllSettings } from '@main/db/repositories/settings'
 import {
   listAnchors,
@@ -45,7 +46,10 @@ export function loadScheduleData(dates: DateStr[]): ScheduleData {
           startTime: r.start_time,
           endTime: r.end_time,
           categoryId: null,
-          meta: { isHeld: r.is_held === 1 },
+          meta: {
+            isHeld: r.is_held === 1,
+            googleColor: googleBlockColor(r.color_id, r.calendar_color),
+          },
         })),
       allDayEvents: (googleByDate.get(date) ?? [])
         .filter((r) => r.is_all_day === 1)

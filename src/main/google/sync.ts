@@ -56,6 +56,9 @@ function toRows(event: calendar_v3.Schema$Event, dayStartHour: number): GoogleEv
     location: event.location ?? null,
     isRecurring: event.recurringEventId !== undefined && event.recurringEventId !== null,
     recurrenceRule: event.recurrence?.join('\n') ?? null,
+    // 일정에 직접 칠한 색. 안 칠했으면 캘린더 기본색을 따르므로 null로 둔다.
+    colorId: event.colorId ?? null,
+    calendarColor: null as string | null,
   }
 
   // 종일 일정: start.date ~ end.date (end는 배타적)
@@ -117,6 +120,18 @@ export async function syncGoogleEvents(now = new Date()): Promise<SyncResult> {
   const client = api()
   const rows: GoogleEventInput[] = []
 
+  /*
+   * 캘린더 기본색을 함께 받아둔다. 일정에 색을 직접 칠하지 않으면 이 색이 쓰인다.
+   * 목록 호출 한 번이면 되고, 실패해도 색만 빠진 채로 동기화는 계속한다 —
+   * 색은 부가 정보지 일정 자체가 아니다.
+   */
+  const calendarColors = new Map<string, string | null>()
+  try {
+    for (const c of await listCalendars()) calendarColors.set(c.id, c.backgroundColor)
+  } catch {
+    // 무시. 색이 없으면 무채색으로 그려진다.
+  }
+
   for (const calendarId of calendarIds) {
     let pageToken: string | undefined
     do {
@@ -131,7 +146,11 @@ export async function syncGoogleEvents(now = new Date()): Promise<SyncResult> {
       })
       for (const event of res.data.items ?? []) {
         for (const row of toRows(event, settings.dayStartHour)) {
-          rows.push({ ...row, calendarId })
+          rows.push({
+            ...row,
+            calendarId,
+            calendarColor: calendarColors.get(calendarId) ?? null,
+          })
         }
       }
       pageToken = res.data.nextPageToken ?? undefined

@@ -17,6 +17,13 @@ export interface BlockMeta {
   completed?: boolean
   /** TODO 슬롯이 가리키는 원본 TODO */
   todoId?: string
+  /**
+   * 구글 일정의 블록 배경색 (`hsl(...)`).
+   *
+   * 카테고리처럼 id로 찾는 게 아니라 구글에서 온 색을 그 자리에서 눌러 만든 값이라
+   * 여기 실어 나른다 — 레이아웃 엔진은 색을 모른다.
+   */
+  googleColor?: string
 }
 
 /** 앵커 기준 상대 큐 항목. 절대 시각이 없다. */
@@ -54,6 +61,13 @@ export interface PlacedBlock {
   column: number
   /** 같은 겹침 무리의 열 개수. 블록 폭 = 1 / columnCount */
   columnCount: number
+  /**
+   * TODO 슬롯이 서로 겹칠 때 몇 번째로 얹히는지 (0부터).
+   *
+   * TODO는 열을 나누지 않는다 — 30분짜리를 반으로 자르면 제목이 안 보인다.
+   * 대신 조금씩 밀어서 겹쳐 쌓는다. 다른 종류는 항상 0이다.
+   */
+  stackIndex: number
   /** 같은 카테고리가 연속될 때의 위치. 명도 교차 렌더링에 쓴다. */
   runIndex: number
 }

@@ -2,7 +2,7 @@
 import { Anchor, CalendarDays, Check, Play, Plus } from 'lucide-react'
 import type { DaySchedule, Mutation } from '@shared/ipc-contract'
 import type { CategoryRow, DateStr } from '@shared/types'
-import { ANCHOR_STEP_MINUTES } from '@shared/constants'
+import { ANCHOR_STEP_MINUTES, STACKED_TODO_OFFSET_PX } from '@shared/constants'
 import {
   MINUTES_PER_DAY,
   fromDayOffset,
@@ -84,6 +84,15 @@ type Draft =
       date: DateStr
       startOffset: number
       durationMinutes: number
+      /**
+       * 출발 자리. 끄는 동안 "어디서 왔는지"를 흐리게 남겨두기 위한 값이라
+       * 확정할 때는 쓰지 않는다.
+       *
+       * 레이아웃 데이터가 아니라 CSS 오버레이로 그린다 — 여기에 가짜 항목을 넣으면
+       * 구글 이벤트가 유령 장애물이 되어 로컬 큐를 엉뚱하게 밀어낸다.
+       */
+      originDate: DateStr
+      originStartOffset: number
     }
   | null
 
@@ -336,12 +345,14 @@ export default function WeekGrid({
    * 구글은 네트워크 왕복이라 실패할 수 있는데, 되돌리기 코드는 따로 없다 —
    * 실패하면 캐시가 그대로이므로 다시 읽는 순간 블록이 원래 자리로 돌아간다.
    */
-  const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock) => {
+const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock) => {
     const target = block.kind === 'google' ? 'google' : 'todo'
     const duration = block.endOffset - block.startOffset
     const grab = offsetAt(date, e.clientY) - block.startOffset
     const el = e.currentTarget as HTMLElement
     capturePointer(el, e.pointerId)
+
+    const originStartOffset = block.startOffset
 
     const onMove = (ev: PointerEvent) => {
       const targetDate = dateAt(ev.clientX) ?? date
@@ -350,7 +361,16 @@ export default function WeekGrid({
         MINUTES_PER_DAY - duration,
         Math.max(0, snapToUnit(raw, moveUnitMinutes)),
       )
-      setDraft({ kind: 'moveFixed', target, id: block.id, date: targetDate, startOffset, durationMinutes: duration })
+      setDraft({
+        kind: 'moveFixed',
+        target,
+        id: block.id,
+        date: targetDate,
+        startOffset,
+        durationMinutes: duration,
+        originDate: date,
+        originStartOffset,
+      })
     }
 
     const onUp = () => {
@@ -477,11 +497,26 @@ export default function WeekGrid({
               <div className="now-line" style={{ top: nowOffset * PX_PER_MINUTE }} />
             )}
 
+            {/*
+              출발 자리 — 끄는 동안 "어디서 왔는지"를 남긴다.
+              Block이 아니라 빈 상자다. 레이아웃에 끼우면 밀림 계산이 오염된다.
+            */}
+            {draft?.kind === 'moveFixed' && draft.originDate === day.date && (
+              <div
+                className="drag-origin"
+                style={{
+                  top: draft.originStartOffset * PX_PER_MINUTE,
+                  height: draft.durationMinutes * PX_PER_MINUTE,
+                }}
+              />
+            )}
+
             {blocks.map((b) => (
               <Block
                 key={`${b.kind}-${b.id}`}
                 block={b}
                 date={day.date}
+                dragging={draft?.kind === 'moveFixed' && draft.id === b.id}
                 // 시간이 지났다는 것은 표시일 뿐 완료가 아니다 (TODO는 자동 완료되지 않는다).
                 past={day.date < today || (day.date === today && b.endOffset <= nowOffset)}
                 selected={selectedId === b.id}
@@ -637,6 +672,7 @@ function Block({
   date,
   past,
   selected,
+  dragging,
   colorById,
   completableIds,
   onSelect,
@@ -649,6 +685,8 @@ function Block({
   date: DateStr
   past: boolean
   selected: boolean
+  /** 지금 끌리고 있는 블록 — 목적지 미리보기라 반투명하게 그린다 */
+  dragging?: boolean
   colorById: Map<string, string>
   completableIds: Set<string>
   onSelect: (b: PlacedBlock | null, date: DateStr) => void
@@ -657,7 +695,13 @@ function Block({
   onResize: (e: React.PointerEvent, date: DateStr, b: PlacedBlock) => void
   onFixedMove: (e: React.PointerEvent, date: DateStr, b: PlacedBlock) => void
 }) {
-  const base = block.categoryId ? colorById.get(block.categoryId) : undefined
+  /*
+   * 색의 출처가 둘이다.
+   *   - 로컬·TODO: 카테고리 색 (사용자가 고른 것)
+   *   - 구글: 구글에서 온 색을 채도만 눌러 만든 것 (shared/google-colors.ts)
+   * 구글 쪽이 훨씬 흐리므로 "진하면 내 것, 흐리면 외부"라는 구분이 색만으로 읽힌다.
+   */
+  const base = block.categoryId ? colorById.get(block.categoryId) : block.meta.googleColor
   // 같은 카테고리가 연속되면 명도를 교차시켜 경계를 보이게 한다.
   // 글자는 검정으로 통일하므로 배경이 그걸 받쳐줄 만큼 밝은지도 함께 보장한다.
   const background = base
@@ -668,9 +712,9 @@ function Block({
    *
    * 구글에만 띠가 있으면 나란히 놓았을 때 로컬·TODO가 허전해 보인다.
    * 배경은 검은 글자를 받치느라 밝은 쪽으로 몰려 카테고리끼리 비슷해 보이는데,
-   * 띠는 어둡고 진해서 hue 차이가 바로 드러난다. 구글은 CSS가 고정 파랑을 준다.
+   * 띠는 어둡고 진해서 hue 차이가 바로 드러난다.
    */
-  const accent = block.kind === 'google' ? undefined : accentColor(base)
+  const accent = accentColor(base)
 
   /*
    * 홀드 중일 때만 움직일 수 있다 (평소엔 고정, 실수 방지).
@@ -698,6 +742,7 @@ function Block({
         `kind-${block.kind}`,
         compact && 'is-compact',
         selected && 'is-selected',
+        dragging && 'is-dragging',
         held && 'is-held',
         past && 'is-past',
         block.meta.completed && 'is-done',
@@ -707,8 +752,14 @@ function Block({
       style={{
         top: block.startOffset * PX_PER_MINUTE,
         height: heightPx,
-        left: `${(block.column / block.columnCount) * 100}%`,
-        width: `${100 / block.columnCount}%`,
+        /*
+         * 겹친 TODO는 열을 나누지 않고 오른쪽으로 조금씩 밀어 얹는다 (stackIndex).
+         * 겹치지 않으면 0이라 아무것도 안 밀린다.
+         */
+        left: `calc(${(block.column / block.columnCount) * 100}% + ${block.stackIndex * STACKED_TODO_OFFSET_PX}px)`,
+        width: `calc(${100 / block.columnCount}% - ${block.stackIndex * STACKED_TODO_OFFSET_PX}px)`,
+        // 뒤에 쌓인 것이 위로 오게 한다. 드래그 중(z-index 5)보다는 낮게 둔다.
+        zIndex: block.stackIndex > 0 ? 1 + block.stackIndex : undefined,
         background,
         borderLeftColor: accent,
       }}

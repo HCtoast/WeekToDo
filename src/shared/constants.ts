@@ -103,3 +103,11 @@ export const LLM_MAX_TOOL_ROUNDS = 8
 /** 채팅이 한 번에 들여다보는 날짜 범위 (오늘 기준) */
 export const LLM_CONTEXT_PAST_DAYS = 1
 export const LLM_CONTEXT_FUTURE_DAYS = 13
+
+/**
+ * 겹친 TODO 슬롯을 얼마나 밀어서 쌓을지 (px).
+ *
+ * 열을 반씩 나누면 30분짜리 블록이 제목도 시각도 못 보여준다.
+ * 살짝 밀어 아래 블록의 왼쪽 색 띠가 드러날 만큼만.
+ */
+export const STACKED_TODO_OFFSET_PX = 10

@@ -146,35 +146,6 @@
 
 /* ── 작은 버튼 ─────────────────────────────────────────────────────────── */
 
-.mini {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 11px;
-  line-height: 1;
-  padding: 3px 5px;
-}
-
-.mini:hover {
-  background: rgb(255 255 255 / 14%);
-  color: var(--text);
-}
-
-.mini.active {
-  background: rgb(124 178 255 / 26%);
-  color: var(--text);
-}
-
-.mini.danger:hover {
-  background: rgb(220 60 60 / 35%);
-  color: var(--text);
-}
-
 /* 앵커: 요일 기본값이면 흐리게, 직접 지정했으면 또렷하게 */
 .anchor-btn {
   display: inline-flex;
@@ -340,11 +311,28 @@
  * 왼쪽 띠 하나로는 약해서 세 가지를 함께 쓴다 — 굵은 파란 띠, 파랑으로 기운 배경,
  * 제목 앞 달력 아이콘. 카테고리 색이 없는 유일한 종류라 배경으로 구분해도 충돌하지 않는다.
  */
+/*
+ * 구글 일정은 **무채색**이다.
+ *
+ * 예전에는 파랑(hsl 217 51% 73%)이었는데 'cat-dev'(개발·자기계발, hsl 212 40% 66%)와
+ * 사실상 같은 색이라 나란히 놓으면 구분되지 않았다. 색을 조금 비트는 대신 규칙을 세운다:
+ *   **채도가 있으면 내 것(옮길 수 있다), 무채색이면 외부에서 온 것(읽기 전용).**
+ * 카테고리는 전부 S 34~44%라 이 대비가 겹칠 일이 없다.
+ *
+ * 밝기는 카테고리(66%)보다 살짝 낮춰 뒤로 물러나게 하되 BLOCK_MIN_LIGHTNESS(58%)는 넘긴다
+ * — 블록 글자가 검정으로 통일돼 있어 그 아래로 내려가면 안 읽힌다.
+ */
+/*
+ * 여기 색은 **대비책**이다. 평소에는 렌더러가 구글에서 가져온 색(채도를 누른 것)을
+ * 인라인으로 덮어쓴다 — shared/google-colors.ts 참고.
+ *
+ * 이 값이 드러나는 경우는 구글이 색을 안 줬거나, 004 마이그레이션 전에 동기화돼
+ * color_id·calendar_color가 비어 있는 행이다. 다음 동기화 때 채워진다.
+ */
 .block.kind-google {
-  background: linear-gradient(rgb(150 176 224 / 94%), rgb(138 165 216 / 94%));
-  border-color: rgb(30 70 140 / 45%);
-  /* 구글은 카테고리가 없으므로 띠 색이 고정이다 (렌더러가 인라인 색을 주지 않는다) */
-  border-left-color: #1a56c4;
+  background: linear-gradient(hsl(220 7% 63% / 94%), hsl(220 7% 59% / 94%));
+  border-color: rgb(40 46 60 / 45%);
+  border-left-color: hsl(220 10% 34%);
 }
 
 .block-src {
@@ -456,4 +444,29 @@
   background: rgb(200 120 40 / 40%);
   font-size: 11px;
   text-align: center;
+}
+
+/* ── 드래그 중 ────────────────────────────────────────────────────────────
+   "어디서 와서 어디로 가는지"를 같이 보여준다. 예전에는 블록이 포인터를 따라
+   그냥 순간이동해서, 잡혔는지도 어디에 놓일지도 알 수 없었다. */
+
+/* 출발 자리 — 끌기 시작한 곳에 남는 빈 윤곽 */
+.drag-origin {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border: 1px dashed rgb(255 255 255 / 28%);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 5%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 끌리는 블록 = 목적지 미리보기. 반투명해서 아래 격자와 이웃 블록이 비쳐 보인다. */
+.block.is-dragging {
+  opacity: 0.72;
+  border-style: dashed;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
+  /* 끄는 동안 커서 아래에서 자리를 잡아야 하므로 다른 블록보다 위로 */
+  z-index: 5;
 }

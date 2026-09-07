@@ -176,12 +176,47 @@ describe('TODO 슬롯 — 겹침 허용', () => {
     expect(times(blocks.filter((b) => b.kind === 'todo'))).toEqual(['보고서 19:00~20:00'])
   })
 
-  it('TODO끼리도 겹칠 수 있다', () => {
+  it('TODO끼리도 겹칠 수 있다 — 폭을 나누는 대신 쌓는다', () => {
     const { blocks } = run({
       todoSlots: [fixed('밥', '19:00', '20:00'), fixed('게임', '19:00', '20:00')],
     })
     expect(blocks).toHaveLength(2)
-    expect(blocks.every((b) => b.columnCount === 2)).toBe(true)
+    // 열을 나누면 30분짜리가 반으로 잘려 제목도 시각도 안 보인다. 폭은 그대로 두고
+    // stackIndex로 조금씩 밀어 얹는다.
+    expect(blocks.every((b) => b.columnCount === 1)).toBe(true)
+    expect(blocks.map((b) => b.stackIndex)).toEqual([0, 1])
+  })
+
+  it('겹치지 않는 TODO는 밀리지 않는다', () => {
+    const { blocks } = run({
+      todoSlots: [fixed('밥', '19:00', '20:00'), fixed('게임', '20:00', '21:00')],
+    })
+    expect(blocks.map((b) => b.stackIndex)).toEqual([0, 0])
+  })
+
+  it('셋이 겹치면 0·1·2로 쌓인다', () => {
+    const { blocks } = run({
+      todoSlots: [
+        fixed('A', '19:00', '20:00'),
+        fixed('B', '19:10', '20:00'),
+        fixed('C', '19:20', '20:00'),
+      ],
+    })
+    expect(blocks.map((b) => b.stackIndex)).toEqual([0, 1, 2])
+  })
+
+  it('TODO가 구글과 겹쳐도 구글은 폭을 잃지 않는다', () => {
+    // 수업 시간에 할 일을 얹는 건 정상적인 사용이다. 예전에는 둘 다 반쪽이 됐다.
+    const { blocks } = run({
+      googleEvents: [fixed('수업', '10:00', '12:00')],
+      todoSlots: [fixed('과제', '10:30', '11:30')],
+    })
+    const google = blocks.find((b) => b.kind === 'google')!
+    const todo = blocks.find((b) => b.kind === 'todo')!
+    expect(google.columnCount).toBe(1)
+    expect(todo.columnCount).toBe(1)
+    // 아래에 구글이 깔려 있으므로 한 칸 밀어 얹는다 — 전폭이면 구글을 통째로 덮는다.
+    expect(todo.stackIndex).toBe(1)
   })
 })
 

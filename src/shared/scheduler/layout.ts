@@ -73,6 +73,7 @@ function makeBlock(
     meta: source.meta ?? {},
     column: 0,
     columnCount: 1,
+    stackIndex: 0,
     runIndex: 0,
   }
 }
@@ -82,7 +83,11 @@ function makeBlock(
  *
  * 서로 겹치는 블록들을 하나의 무리로 묶고, 무리 안에서 "이미 끝난 열"을 재사용한다.
  * 로컬 이벤트끼리는 구조상 겹치지 않고 로컬-구글도 밀림 로직이 막으므로,
- * 실제로 열이 나뉘는 것은 구글끼리 / TODO끼리 / TODO와 다른 종류가 겹칠 때다.
+ * 실제로 열이 나뉘는 것은 구글끼리다.
+ *
+ * **TODO 슬롯은 여기서 빠진다.** 열을 나누면 30분짜리가 반으로 잘려 제목도 시각도
+ * 안 보인다. TODO는 하루 위에 떠 있는 핀에 가까우므로 나란히 자르는 대신
+ * `assignStackIndex`가 조금씩 밀어서 겹쳐 쌓는다. 밀림 계산에서 빼는 것과 같은 이유다.
  */
 function assignColumns(blocks: PlacedBlock[]): void {
   let group: PlacedBlock[] = []
@@ -108,6 +113,7 @@ function assignColumns(blocks: PlacedBlock[]): void {
   }
 
   for (const b of blocks) {
+    if (b.kind === 'todo') continue
     if (group.length > 0 && b.startOffset >= groupEnd) {
       flush()
       groupEnd = -1
@@ -116,6 +122,39 @@ function assignColumns(blocks: PlacedBlock[]): void {
     groupEnd = Math.max(groupEnd, b.endOffset)
   }
   flush()
+}
+
+/**
+ * 겹치는 TODO 슬롯에 쌓임 순서를 매긴다.
+ *
+ * 열 배정과 같은 "빈 레인 재사용" 방식이지만, 결과를 폭을 나누는 데 쓰지 않고
+ * **왼쪽으로 미는 양**으로 쓴다. 겹치지 않으면 전부 0이라 아무것도 밀리지 않는다.
+ */
+function assignStackIndex(blocks: PlacedBlock[]): void {
+  const laneEnds: number[] = []
+  const fixed = blocks.filter((b) => b.kind !== 'todo')
+
+  for (const b of blocks) {
+    if (b.kind !== 'todo') continue
+
+    let lane = laneEnds.findIndex((end) => end <= b.startOffset)
+    if (lane === -1) {
+      lane = laneEnds.length
+      laneEnds.push(b.endOffset)
+    } else {
+      laneEnds[lane] = b.endOffset
+    }
+
+    /*
+     * 아래에 다른 블록이 깔려 있으면 최소 한 칸은 민다.
+     * 전폭으로 얹으면 구글 일정을 통째로 덮어 "그 시간에 뭐가 있었는지"가 사라진다.
+     * 한 칸만 밀어도 아래 블록의 왼쪽 색 띠가 드러나 존재가 읽힌다.
+     */
+    const onTopOfSomething = fixed.some(
+      (f) => f.startOffset < b.endOffset && b.startOffset < f.endOffset,
+    )
+    b.stackIndex = onTopOfSomething ? lane + 1 : lane
+  }
 }
 
 /**
@@ -183,6 +222,7 @@ export function layoutDay(input: LayoutInput): LayoutResult {
   )
 
   assignColumns(blocks)
+  assignStackIndex(blocks)
   assignRunIndex(blocks)
 
   return { blocks, overflow }

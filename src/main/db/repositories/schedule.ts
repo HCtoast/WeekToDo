@@ -387,6 +387,10 @@ export interface GoogleEventInput {
   isRecurring: boolean
   recurrenceRule: string | null
   isAllDay: boolean
+  /** 일정별 색 (구글 colorId). 안 칠했으면 null */
+  colorId: string | null
+  /** 그 일정이 속한 캘린더의 기본색 (#rrggbb) */
+  calendarColor: string | null
 }
 
 /**
@@ -404,9 +408,10 @@ export function replaceGoogleEvents(rows: GoogleEventInput[], from: DateStr, to:
   const upsert = db.prepare(
     `INSERT INTO google_event_cache
        (google_event_id, calendar_id, title, description, location, date, start_time, end_time,
-        is_recurring, recurrence_rule, is_all_day, last_synced_at)
+        is_recurring, recurrence_rule, is_all_day, color_id, calendar_color, last_synced_at)
      VALUES (@googleEventId, @calendarId, @title, @description, @location, @date, @startTime,
-             @endTime, @isRecurring, @recurrenceRule, @isAllDay, @syncedAt)
+             @endTime, @isRecurring, @recurrenceRule, @isAllDay, @colorId, @calendarColor,
+             @syncedAt)
      ON CONFLICT(google_event_id) DO UPDATE SET
        calendar_id = excluded.calendar_id,
        title = excluded.title,
@@ -418,6 +423,8 @@ export function replaceGoogleEvents(rows: GoogleEventInput[], from: DateStr, to:
        is_recurring = excluded.is_recurring,
        recurrence_rule = excluded.recurrence_rule,
        is_all_day = excluded.is_all_day,
+       color_id = excluded.color_id,
+       calendar_color = excluded.calendar_color,
        last_synced_at = excluded.last_synced_at`,
   )
 
