@@ -6,6 +6,13 @@ import { formatCountdown, type DeadlineType } from '@shared/deadline'
 import { TIME_STEP_MINUTES } from '@shared/constants'
 import { adjustRangeEnd, adjustRangeStart } from '@shared/scheduler'
 import TimeField from '@renderer/components/TimeField/TimeField'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select'
 import './TodoDetail.css'
 
 /**
@@ -20,6 +27,9 @@ export interface TodoSlotRef {
   startTime: string
   endTime: string
 }
+
+/** "미분류"·"없음"을 나타내는 센티널 — Radix Select는 빈 문자열을 항목 값으로 못 쓴다 */
+const NONE = '__none__'
 
 export default function TodoDetail({
   todo,
@@ -70,17 +80,24 @@ export default function TodoDetail({
       <div className="detail-body">
         <label className="field">
           <span>카테고리</span>
-          <select
-            value={todo.categoryId ?? ''}
-            onChange={(e) => patch({ categoryId: e.target.value || null })}
+          <Select
+            value={todo.categoryId ?? NONE}
+            onValueChange={(v) => patch({ categoryId: v === NONE ? null : v })}
           >
-            <option value="">미분류</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-7 w-auto gap-1.5 px-2.5 text-body-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE} className="py-1.5 text-body-sm">
+                미분류
+              </SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id} className="py-1.5 text-body-sm">
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         {slot ? (
@@ -147,18 +164,29 @@ export default function TodoDetail({
 
         <label className="field">
           <span>마감</span>
-          <select
-            value={type}
-            onChange={(e) => {
-              const next = e.target.value as DeadlineType | ''
+          <Select
+            value={type === '' ? NONE : type}
+            onValueChange={(v) => {
+              const next = v === NONE ? '' : (v as DeadlineType)
               setType(next)
               if (next === '') patch({ deadline: { type: null } })
             }}
           >
-            <option value="">없음</option>
-            <option value="absolute">날짜 지정</option>
-            <option value="relative">생성 후 N일</option>
-          </select>
+            <SelectTrigger className="h-7 w-auto gap-1.5 px-2.5 text-body-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE} className="py-1.5 text-body-sm">
+                없음
+              </SelectItem>
+              <SelectItem value="absolute" className="py-1.5 text-body-sm">
+                날짜 지정
+              </SelectItem>
+              <SelectItem value="relative" className="py-1.5 text-body-sm">
+                생성 후 N일
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </label>
 
         {type === 'absolute' && (

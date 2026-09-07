@@ -2,6 +2,23 @@ import { useCallback, useEffect, useState } from 'react'
 import type { GoogleCalendarInfo, GoogleStatus } from '@shared/ipc-contract'
 import type { AppSettings } from '@shared/settings-schema'
 import { GOOGLE_REMINDER_CHOICES } from '@shared/constants'
+import { Button } from '@renderer/components/ui/button'
+import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Input } from '@renderer/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select'
+
+/**
+ * "첫 번째 캘린더"(= 지정 안 함)를 나타내는 센티널.
+ * Radix Select는 빈 문자열을 항목 값으로 허용하지 않는다 — 그걸 placeholder 표시에 쓰기 때문.
+ * DB에는 그대로 null로 저장한다.
+ */
+const FIRST_CALENDAR = '__first__'
 
 /**
  * 구글 캘린더 연결.
@@ -78,31 +95,31 @@ export default function GoogleSection({
             <div className="row-control">
               {status.connected ? (
                 <>
-                  <button
-                    className="mini"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     disabled={busy !== null}
-                    onClick={() =>
-                      void run('동기화', () => window.api.googleSyncNow())
-                    }
+                    onClick={() => void run('동기화', () => window.api.googleSyncNow())}
                   >
                     {busy === '동기화' ? '동기화 중…' : '지금 동기화'}
-                  </button>
-                  <button
-                    className="mini danger"
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
                     disabled={busy !== null}
                     onClick={() => void run('해제', () => window.api.googleDisconnect())}
                   >
                     연결 해제
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
-                  className="mini active"
+                <Button
+                  size="sm"
                   disabled={busy !== null}
                   onClick={() => void run('연결', () => window.api.googleConnect())}
                 >
                   {busy === '연결' ? '브라우저에서 로그인 중…' : '구글 계정 연결'}
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -124,13 +141,13 @@ export default function GoogleSection({
             {calendars.map((c) => (
               <li key={c.id}>
                 <label>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={settings.googleCalendarIds.includes(c.id)}
-                    onChange={(e) => {
-                      const next = e.target.checked
-                        ? [...settings.googleCalendarIds, c.id]
-                        : settings.googleCalendarIds.filter((id) => id !== c.id)
+                    onCheckedChange={(v) => {
+                      const next =
+                        v === true
+                          ? [...settings.googleCalendarIds, c.id]
+                          : settings.googleCalendarIds.filter((id) => id !== c.id)
                       onSet('googleCalendarIds', next)
                     }}
                   />
@@ -150,19 +167,29 @@ export default function GoogleSection({
             <div className="row-main">
               <span className="row-label">새 일정을 만들 캘린더</span>
               <div className="row-control">
-                <select
-                  value={settings.googleWriteCalendarId ?? ''}
-                  onChange={(e) => onSet('googleWriteCalendarId', e.target.value || null)}
+                {/* Radix Select는 빈 문자열을 값으로 쓸 수 없어 센티널을 둔다 */}
+                <Select
+                  value={settings.googleWriteCalendarId ?? FIRST_CALENDAR}
+                  onValueChange={(v) =>
+                    onSet('googleWriteCalendarId', v === FIRST_CALENDAR ? null : v)
+                  }
                 >
-                  <option value="">첫 번째 캘린더</option>
-                  {calendars
-                    .filter((c) => settings.googleCalendarIds.includes(c.id))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.summary}
-                      </option>
-                    ))}
-                </select>
+                  <SelectTrigger className="h-7 w-auto gap-1.5 px-2.5 text-body-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={FIRST_CALENDAR} className="py-1.5 text-body-sm">
+                      첫 번째 캘린더
+                    </SelectItem>
+                    {calendars
+                      .filter((c) => settings.googleCalendarIds.includes(c.id))
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="py-1.5 text-body-sm">
+                          {c.summary}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <p className="hint">
@@ -174,21 +201,27 @@ export default function GoogleSection({
             <div className="row-main">
               <span className="row-label">새 일정의 알림</span>
               <div className="row-control">
-                <select
+                <Select
                   value={String(settings.googleReminderMinutes)}
-                  onChange={(e) =>
-                    onSet(
-                      'googleReminderMinutes',
-                      e.target.value === 'null' ? null : Number(e.target.value),
-                    )
+                  onValueChange={(v) =>
+                    onSet('googleReminderMinutes', v === 'null' ? null : Number(v))
                   }
                 >
-                  {GOOGLE_REMINDER_CHOICES.map((m) => (
-                    <option key={String(m)} value={String(m)}>
-                      {m === null ? '없음' : m === 0 ? '정시' : `${m}분 전`}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-7 w-auto gap-1.5 px-2.5 text-body-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GOOGLE_REMINDER_CHOICES.map((m) => (
+                      <SelectItem
+                        key={String(m)}
+                        value={String(m)}
+                        className="py-1.5 text-body-sm"
+                      >
+                        {m === null ? '없음' : m === 0 ? '정시' : `${m}분 전`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <p className="hint">
@@ -224,30 +257,32 @@ function ClientForm({
         Google Cloud Console에서 만든 <strong>데스크톱 앱</strong> OAuth 클라이언트의 ID와 시크릿을
         입력하세요. 암호화해서 이 PC에만 저장되며 화면에 다시 표시하지 않습니다.
       </p>
-      <input
+      <Input
         placeholder="클라이언트 ID"
+        className="h-8 text-body-sm"
         value={clientId}
         onChange={(e) => setClientId(e.target.value)}
       />
-      <input
+      <Input
         type="password"
         placeholder="클라이언트 시크릿"
+        className="h-8 text-body-sm"
         value={clientSecret}
         onChange={(e) => setClientSecret(e.target.value)}
       />
       <div className="client-form-actions">
         {onCancel && (
-          <button className="mini" onClick={onCancel}>
+          <Button variant="secondary" size="sm" onClick={onCancel}>
             취소
-          </button>
+          </Button>
         )}
-        <button
-          className="mini active"
+        <Button
+          size="sm"
           disabled={!clientId.trim() || !clientSecret.trim()}
           onClick={() => onSubmit({ clientId, clientSecret })}
         >
           저장
-        </button>
+        </Button>
       </div>
     </div>
   )

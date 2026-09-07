@@ -2,6 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import type { LlmStatus } from '@shared/ipc-contract'
 import type { AppSettings } from '@shared/settings-schema'
 import { LLM_MODELS, LLM_MODEL_LABEL, type LlmModel } from '@shared/constants'
+import { Button } from '@renderer/components/ui/button'
+import { Input } from '@renderer/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select'
 
 /**
  * 자연어 명령(LLM) 설정.
@@ -51,26 +60,28 @@ export default function ChatSection({
             console.anthropic.com에서 만든 API 키를 넣어주세요. 암호화해서 이 PC에만 저장되며 화면에
             다시 표시하지 않습니다. 요금은 사용자의 Anthropic 계정으로 청구됩니다.
           </p>
-          <input
+          <Input
             type="password"
             placeholder="sk-ant-..."
+            className="h-8 text-body-sm"
             value={key}
             onChange={(e) => setKey(e.target.value)}
           />
           <div className="client-form-actions">
             {status.hasApiKey && (
-              <button
-                className="mini"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setEditing(false)
                   setKey('')
                 }}
               >
                 취소
-              </button>
+              </Button>
             )}
-            <button
-              className="mini active"
+            <Button
+              size="sm"
               disabled={!key.trim()}
               onClick={() =>
                 void run(async () => {
@@ -81,7 +92,7 @@ export default function ChatSection({
               }
             >
               저장
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -91,15 +102,16 @@ export default function ChatSection({
               키 저장됨{status.apiKeyHint ? ` · …${status.apiKeyHint}` : ''}
             </span>
             <div className="row-control">
-              <button className="mini" onClick={() => setEditing(true)}>
+              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
                 변경
-              </button>
-              <button
-                className="mini danger"
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => void run(() => window.api.llmSetKey(null))}
               >
                 삭제
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -111,16 +123,21 @@ export default function ChatSection({
         <div className="row-main">
           <span className="row-label">모델</span>
           <div className="row-control">
-            <select
+            <Select
               value={settings.llmModel}
-              onChange={(e) => onSet('llmModel', e.target.value as LlmModel)}
+              onValueChange={(v) => onSet('llmModel', v as LlmModel)}
             >
-              {LLM_MODELS.map((m) => (
-                <option key={m} value={m}>
-                  {LLM_MODEL_LABEL[m]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-7 w-auto gap-1.5 px-2.5 text-body-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LLM_MODELS.map((m) => (
+                  <SelectItem key={m} value={m} className="py-1.5 text-body-sm">
+                    {LLM_MODEL_LABEL[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <p className="hint">

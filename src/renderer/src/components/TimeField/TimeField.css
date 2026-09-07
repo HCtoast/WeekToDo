@@ -10,18 +10,17 @@
 /*
  * 화살표를 지운다.
  *
- * 전역 select 규칙이 화살표를 `background-image`로 직접 그리므로 `appearance: none`만으로는
- * 안 사라진다. 반드시 `background-image: none`까지 꺼야 한다.
  * 시·분이 나란히 붙는 자리라 화살표가 둘이면 폭을 잡아먹고 숫자와 겹쳐 읽히지 않는다.
+ * Radix는 화살표를 `SelectIcon`(data-slot 없는 마지막 자식 span)으로 그리므로
+ * 트리거 안의 svg를 숨긴다.
  */
-.timefield select {
-  appearance: none;
-  background-image: none;
-  padding: 2px 5px;
-  /* 두 자리 숫자가 잘리지 않을 만큼은 늘 확보한다 */
+.timefield [data-slot='select-trigger'] > svg {
+  display: none;
+}
+
+/* 두 자리 숫자가 잘리지 않을 만큼은 늘 확보한다 */
+.timefield [data-slot='select-trigger'] {
   min-width: 2.5em;
-  text-align: center;
-  text-align-last: center;
 }
 
 .timefield-sep {

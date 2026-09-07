@@ -5,7 +5,12 @@
   flex: 0 0 auto;
   padding: 6px 10px;
   border-top: 1px solid var(--border);
-  background: rgb(255 255 255 / 7%);
+  /*
+   * 불투명한 면을 깐다. 7% 흰 막만 씌웠을 때는 유리 뒤 바탕화면이 그대로 비쳐서
+   * 제목·시각·카테고리가 벽지와 섞여 읽히지 않았다 — 블록을 고르면 제일 먼저 보는 줄이다.
+   * 메뉴·모달이 쓰는 것과 같은 면 토큰을 써서 톤을 맞춘다.
+   */
+  background: var(--surface);
   font-size: 13px;
 }
 
@@ -56,15 +61,10 @@
   color: var(--text);
 }
 
+/* 카테고리는 ui/select로 그린다. 폭만 여기서 묶어둔다 — 제목이 길어도 바가 밀리지 않게. */
 .selbar-cat {
   flex: none;
-  max-width: 96px;
-  font-size: 11px;
-  padding: 2px 20px 2px 6px;
-}
-
-.selbar-cat:disabled {
-  opacity: 0.4;
+  max-width: 108px;
 }
 
 /* 아이콘 버튼 — 크기를 키워 눌러야 할 곳이 분명히 보이게 한다 */

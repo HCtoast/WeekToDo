@@ -5,7 +5,20 @@ import { adjustRangeEnd, adjustRangeStart, type PlacedBlock } from '@shared/sche
 import { TIME_STEP_MINUTES } from '@shared/constants'
 import { ICON_SIZE, ICON_STROKE } from '@renderer/components/WidgetChrome/WidgetChrome'
 import TimeField from '@renderer/components/TimeField/TimeField'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select'
 import './SelectionBar.css'
+
+/**
+ * "미분류"를 나타내는 센티널. Radix Select는 빈 문자열을 항목 값으로 쓸 수 없다
+ * (placeholder 판정에 쓰기 때문). DB에는 그대로 null로 저장한다.
+ */
+const NO_CATEGORY = '__none__'
 
 const icon = { size: ICON_SIZE, strokeWidth: ICON_STROKE }
 
@@ -106,24 +119,35 @@ export default function SelectionBar({
         </button>
       )}
 
-      <select
-        className="selbar-cat"
-        value={block.categoryId ?? ''}
-        disabled={block.kind === 'google'}
-        onChange={(e) => {
-          const categoryId = e.target.value || null
+      <Select
+        value={block.categoryId ?? NO_CATEGORY}
+        disabled={isGoogle}
+        onValueChange={(v) => {
+          const categoryId = v === NO_CATEGORY ? null : v
           if (isLocal) void mutate({ type: 'localEvent.update', id: block.id, patch: { categoryId } })
           else if (isTodo && block.meta.todoId)
             void mutate({ type: 'todo.update', id: block.meta.todoId, patch: { categoryId } })
         }}
       >
-        <option value="">미분류</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="selbar-cat h-6 w-auto min-w-0 gap-1 px-2 text-caption">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="w-auto min-w-0">
+          <SelectItem value={NO_CATEGORY} showIndicator={false} className="px-3 py-1 text-body-sm">
+            미분류
+          </SelectItem>
+          {categories.map((c) => (
+            <SelectItem
+              key={c.id}
+              value={c.id}
+              showIndicator={false}
+              className="px-3 py-1 text-body-sm"
+            >
+              {c.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {isGoogle && (
         <button
