@@ -10,8 +10,11 @@ const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
+// `hct`가 맨 앞에 있어야 한다: 메뉴 내용은 Portal로 document.body에 붙어
+// 트리거를 감싼 `.hct` 밖으로 나간다. 없으면 토큰이 안 잡혀 배경도 글자색도 없이 그려진다.
+// (ui/select.tsx의 SelectContent와 같은 이유)
 const contentSurface =
-  "z-50 min-w-40 overflow-hidden rounded-lg border border-border bg-surface-raised p-2 text-fg shadow-e2";
+  "hct z-50 min-w-40 overflow-hidden rounded-lg border border-border bg-surface-raised p-2 text-fg shadow-e2";
 
 const itemBase =
   "relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-2 text-body-sm outline-none transition-base data-[highlighted]:bg-action-soft data-[highlighted]:text-fg data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:icon-sm [&>svg]:shrink-0";
@@ -40,14 +43,23 @@ function DropdownMenuContent({
 function DropdownMenuItem({
   className,
   inset,
+  variant,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean;
+  /** `danger`는 지우기처럼 되돌리기 어려운 항목에 쓴다 */
+  variant?: "default" | "danger";
 }) {
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
-      className={cn(itemBase, inset && "pl-8", className)}
+      className={cn(
+        itemBase,
+        inset && "pl-8",
+        variant === "danger" &&
+          "text-danger data-[highlighted]:bg-danger data-[highlighted]:text-fg-on-danger",
+        className,
+      )}
       {...props}
     />
   );

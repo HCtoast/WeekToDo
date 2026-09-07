@@ -16,7 +16,8 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-overlay",
+        // Portal로 나가므로 여기서도 `.hct`를 다시 세운다 (ui/select.tsx 참고)
+        "hct fixed inset-0 z-50 bg-overlay",
         "data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out",
         className,
       )}
@@ -39,7 +40,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 flex w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-5",
+          "hct fixed left-1/2 top-1/2 z-50 flex w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-5",
           "rounded-xl border border-border bg-surface-raised p-6 text-fg shadow-e3",
           "data-[state=open]:animate-pop-in data-[state=closed]:animate-pop-out",
           className,
