@@ -34,8 +34,10 @@ export const TOOLS: ToolDefinition[] = [
   {
     name: 'get_schedule',
     description:
-      '지정한 기간의 일정을 읽는다. 무엇을 바꾸기 전에 항상 먼저 불러서 실제 상태와 id를 확인할 것. ' +
-      '범위를 주지 않으면 어제부터 2주치를 돌려준다.',
+      '지정한 기간의 일정을 읽는다. ' +
+      '**보통은 부를 필요가 없다** — 어제부터 2주치 일정과 모든 id가 이미 시스템 프롬프트 끝의 ' +
+      '스냅샷에 들어 있다. 그 범위 밖(2주 뒤, 어제보다 전)을 봐야 할 때만 쓴다. ' +
+      '범위를 주지 않으면 스냅샷과 같은 구간을 돌려주므로 한 번 더 부르는 것은 낭비다.',
     input_schema: {
       type: 'object',
       properties: { startDate: dateProp, endDate: dateProp },
@@ -381,10 +383,108 @@ function findBlock(id: string): { kind: string; title: string; date: DateStr } |
   return null
 }
 
+/**
+ * 그 TODO가 이미 어딘가 배치돼 있는지. 있으면 그 슬롯을 돌려준다.
+ *
+ * 한 TODO에 슬롯이 여럿일 수 있는 구조지만(스키마가 막지 않는다) 실제로 그런 상태는
+ * 사고로 생긴 것이므로 **가장 앞선 것 하나**만 본다.
+ */
+function findSlotOfTodo(todoId: string): { id: string; date: DateStr } | null {
+  const { startDate, endDate } = defaultRange()
+  const data = loadScheduleData(datesBetween(startDate, endDate))
+
+  for (const day of data.days) {
+    const slot = day.todoSlots.find((s) => s.meta?.todoId === todoId)
+    if (slot) return { id: slot.id, date: day.date }
+  }
+  return null
+}
+
+/**
+ * 시각 구간이 성립하는지 본다.
+ *
+ * **`end < start`는 오류가 아니다 — 자정을 넘는 구간이다** (23:00~00:00).
+ * 이 앱은 하루가 자정이 아니라 dayStartHour에 바뀌므로 밤 11시 일정은 지극히 정상이고,
+ * 드래그·TimeField 같은 다른 입력 경로는 이미 이걸 허용한다.
+ *
+ * 예전에는 여기서 `end <= start`를 통째로 막았다. 그래서 **자연어 명령으로만**
+ * 23시 이후로 옮길 수 없었다 — 모델이 24:00을 시도했다 형식 오류를 맞고,
+ * 23:00~00:00을 시도했다 이 검사에 막혀 열 몇 초를 헤매다 엉뚱한 시각에 놓았다.
+ *
+ * 진짜로 막아야 하는 것은 **길이가 0인 구간**뿐이다.
+ */
+function assertRange(startTime: string, endTime: string): void {
+  if (startTime === endTime) {
+    throw new Error(`시작과 끝이 같습니다 (${startTime}). 길이가 0인 일정은 만들 수 없습니다.`)
+  }
+}
+
+/**
+ * 그 id가 실제 TODO인지 확인하고 제목을 돌려준다.
+ *
+ * `update_todo`는 예전에 id를 검사하지 않았다. 슬롯 id를 넘겨도 UPDATE가 0행을 고치고
+ * "TODO 수정" 성공이 돌아갔다 — 모델은 됐다고 믿고 넘어간다.
+ */
+function findTodoTitle(id: string): string | null {
+  const { startDate, endDate } = defaultRange()
+  const data = loadScheduleData(datesBetween(startDate, endDate))
+
+  const todo = data.todos.find((t) => t.id === id)
+  if (todo) return todo.title
+
+  for (const day of data.days) {
+    const slot = day.todoSlots.find((sl) => sl.meta?.todoId === id)
+    if (slot) return slot.title
+  }
+  return null
+}
+
+/**
+ * 바꿀 내용이 하나라도 있는지 본다.
+ *
+ * 전부 `undefined`인 patch는 DB에 가도 아무 일이 없는데 성공이 돌아간다.
+ * 실제로 `update_todo {id, patch:{}}`가 "TODO 수정" OK를 받은 적이 있다.
+ * **조용한 실패는 모델이 고칠 수 없다** — 던져야 다시 읽거나 다른 도구를 고른다.
+ */
+function assertHasChanges(patch: Record<string, unknown>, tool: string, fields: string): void {
+  if (Object.values(patch).some((v) => v !== undefined)) return
+  throw new Error(
+    `${tool}에 바꿀 내용이 없습니다. 무엇을 어떻게 바꿀지 최소 하나는 주어야 합니다 (${fields}). ` +
+      '바꾸려는 것이 이 도구에 없는 항목이라면 종류에 맞는 다른 도구를 쓰세요 — ' +
+      'TODO 슬롯의 길이·시각은 move_todo_slot, 로컬 일정의 소요시간은 update_event입니다.',
+  )
+}
+
 // ── 실행 ─────────────────────────────────────────────────────────────────────
+
+/**
+ * 스키마에 없는 인자를 걸러낸다.
+ *
+ * 예전에는 그냥 무시했는데, 그러면 **틀린 호출이 성공으로 돌아간다.**
+ * 실제로 `update_todo`에 `durationMinutes`(그 도구에 없는 필드)를 주고 "TODO 수정" OK를
+ * 받은 적이 있다. 모델은 됐다고 믿고 다음 단계로 갔고, 결과적으로 아무것도 안 바뀌었다.
+ *
+ * 던져야 모델이 안다 — 도구 오류는 루프를 끊지 않고 `is_error` 결과로 돌아가므로,
+ * 모델이 메시지를 읽고 맞는 도구로 다시 부른다.
+ */
+function rejectUnknownArgs(name: string, args: Args): void {
+  const tool = TOOLS.find((t) => t.name === name)
+  if (!tool) return
+
+  const allowed = new Set(Object.keys(tool.input_schema.properties))
+  const unknown = Object.keys(args).filter((k) => !allowed.has(k))
+  if (unknown.length === 0) return
+
+  throw new Error(
+    `${name}에 없는 인자입니다: ${unknown.join(', ')}. ` +
+      `이 도구가 받는 것은 ${[...allowed].join(', ')} 뿐입니다. ` +
+      '바꾸려는 것이 다른 종류라면 그에 맞는 도구를 쓰세요.',
+  )
+}
 
 export function runTool(name: string, rawArgs: unknown): ToolOutcome {
   const args = (rawArgs ?? {}) as Args
+  rejectUnknownArgs(name, args)
 
   switch (name) {
     case 'get_schedule': {
@@ -419,17 +519,20 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
       const found = findBlock(id)
       if (!found || found.kind !== 'local') throw new Error(`로컬 일정을 찾을 수 없습니다: ${id}`)
 
-      applyMutation({
-        type: 'localEvent.update',
-        id,
-        patch: {
-          title: str(args, 'title'),
-          durationMinutes: int(args, 'durationMinutes', 1),
-          categoryId: str(args, 'categoryId'),
-          isHeld: bool(args, 'isHeld'),
-          completed: bool(args, 'completed'),
-        },
-      })
+      const eventPatch = {
+        title: str(args, 'title'),
+        durationMinutes: int(args, 'durationMinutes', 1),
+        categoryId: str(args, 'categoryId'),
+        isHeld: bool(args, 'isHeld'),
+        completed: bool(args, 'completed'),
+      }
+      assertHasChanges(
+        eventPatch,
+        'update_event',
+        'title, durationMinutes, categoryId, isHeld, completed',
+      )
+
+      applyMutation({ type: 'localEvent.update', id, patch: eventPatch })
       return { result: { ok: true }, summary: `일정 수정 — ${found.title}` }
     }
 
@@ -451,7 +554,7 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
       const endTime = time(args, 'endTime')
 
       if (d && startTime && endTime) {
-        if (endTime <= startTime) throw new Error('endTime이 startTime보다 뒤여야 합니다.')
+        assertRange(startTime, endTime)
         applyMutation({ type: 'todo.createAt', title, date: d, startTime, endTime, categoryId })
         return {
           result: { ok: true },
@@ -468,18 +571,28 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
 
     case 'update_todo': {
       const id = str(args, 'id', true)
-      applyMutation({
-        type: 'todo.update',
-        id,
-        patch: {
-          title: str(args, 'title'),
-          description: str(args, 'description'),
-          url: str(args, 'url'),
-          categoryId: str(args, 'categoryId'),
-          completed: bool(args, 'completed'),
-          deadline: deadlineOf(args),
-        },
-      })
+      if (findTodoTitle(id) === null) {
+        throw new Error(
+          `TODO를 찾을 수 없습니다: ${id}. 스냅샷에서 그 블록의 todoId를 쓰세요 — ` +
+            '블록의 id는 슬롯 id라 이 도구에는 통하지 않습니다.',
+        )
+      }
+
+      const todoPatch = {
+        title: str(args, 'title'),
+        description: str(args, 'description'),
+        url: str(args, 'url'),
+        categoryId: str(args, 'categoryId'),
+        completed: bool(args, 'completed'),
+        deadline: deadlineOf(args),
+      }
+      assertHasChanges(
+        todoPatch,
+        'update_todo',
+        'title, description, url, categoryId, completed, 마감',
+      )
+
+      applyMutation({ type: 'todo.update', id, patch: todoPatch })
       const done = bool(args, 'completed')
       return {
         result: { ok: true },
@@ -492,7 +605,27 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
       const d = date(args, 'date', true)!
       const startTime = time(args, 'startTime', true)!
       const endTime = time(args, 'endTime', true)!
-      if (endTime <= startTime) throw new Error('endTime이 startTime보다 뒤여야 합니다.')
+      assertRange(startTime, endTime)
+
+      /*
+       * 이미 배치돼 있으면 **옮긴다.** 예전에는 그냥 슬롯을 하나 더 만들어서,
+       * "30분으로 줄여줘" 한 번에 같은 TODO가 두 개로 늘어났다.
+       *
+       * "배치"와 "이동"은 사용자 입장에서 같은 말이다 — 도구가 둘로 나뉜 것은
+       * 우리 사정이지 모델이 매번 맞혀야 할 문제가 아니다.
+       */
+      const existing = findSlotOfTodo(todoId)
+      if (existing) {
+        applyMutation({
+          type: 'todoSlot.update',
+          id: existing.id,
+          patch: { date: d, startTime, endTime },
+        })
+        return {
+          result: { ok: true, moved: true },
+          summary: `TODO 이동 — ${d} ${startTime}~${endTime}`,
+        }
+      }
 
       applyMutation({ type: 'todoSlot.create', todoId, date: d, startTime, endTime })
       return { result: { ok: true }, summary: `TODO 배치 — ${d} ${startTime}~${endTime}` }
@@ -502,19 +635,20 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
       const slotId = str(args, 'slotId', true)
       const found = findBlock(slotId)
       if (!found || found.kind !== 'todoSlot') {
-        throw new Error(`배치된 TODO 슬롯을 찾을 수 없습니다: ${slotId}`)
+        throw new Error(
+          `배치된 TODO 슬롯을 찾을 수 없습니다: ${slotId}. ` +
+            '스냅샷에서 kind가 "todo"인 블록의 id를 쓰세요. ' +
+            '아직 배치되지 않은 백로그 TODO라면 place_todo로 먼저 놓아야 합니다.',
+        )
       }
       const startTime = time(args, 'startTime')
       const endTime = time(args, 'endTime')
-      if (startTime && endTime && endTime <= startTime) {
-        throw new Error('endTime이 startTime보다 뒤여야 합니다.')
-      }
+      if (startTime && endTime) assertRange(startTime, endTime)
 
-      applyMutation({
-        type: 'todoSlot.update',
-        id: slotId,
-        patch: { date: date(args, 'date'), startTime, endTime },
-      })
+      const slotPatch = { date: date(args, 'date'), startTime, endTime }
+      assertHasChanges(slotPatch, 'move_todo_slot', 'date, startTime, endTime')
+
+      applyMutation({ type: 'todoSlot.update', id: slotId, patch: slotPatch })
       return { result: { ok: true }, summary: `TODO 이동 — ${found.title}` }
     }
 
