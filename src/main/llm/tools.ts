@@ -1,7 +1,7 @@
 import { LLM_CONTEXT_FUTURE_DAYS, LLM_CONTEXT_PAST_DAYS } from '@shared/constants'
 import type { DeadlineSpec } from '@shared/deadline'
 import type { DateStr, TimeStr } from '@shared/types'
-import { addDays, getLogicalDate, layoutDay, relativeDayLabel } from '@shared/scheduler'
+import { addDays, getLogicalDate, layoutDay, relativeDayLabel, toDayOffset } from '@shared/scheduler'
 import { applyMutation } from '@main/db/mutations'
 import { loadScheduleData } from '@main/db/schedule-view'
 import { listCategories } from '@main/db/repositories/categories'
@@ -250,6 +250,14 @@ export function buildSnapshot(startDate: DateStr, endDate: DateStr): unknown {
       // "오늘/내일"을 여기서 확정해 준다 — 모델이 벽시계 날짜로 더하면 하루씩 밀린다.
       relative: relativeDayLabel(data.today, day.date),
       weekday: KO_WEEKDAY[new Date(`${day.date}T12:00:00`).getDay()],
+      /*
+       * 이 날이 벽시계로 언제부터 언제까지인지.
+       *
+       * 하루가 자정이 아니라 dayStartHour에 바뀌는 것을 말로 설명하면 모델이 자꾸
+       * 거꾸로 이해한다 — "새벽 1시는 논리적으로 어제"라며 멀쩡한 요청을 거절한 적이 있다.
+       * 실제로는 이 날 01:00이 **달력상 다음 날 새벽**이다. 데이터로 주면 헷갈릴 여지가 없다.
+       */
+      clockSpan: `${day.date} ${String(settings.dayStartHour).padStart(2, '0')}:00 ~ ${addDays(day.date, 1)} ${String(settings.dayStartHour).padStart(2, '0')}:00`,
       anchorTime: day.anchorTime,
       anchorIsOverride: day.anchorIsOverride,
       allDayEvents: day.allDayEvents.map((e) => e.title),
@@ -379,6 +387,13 @@ function findBlock(id: string): { kind: string; title: string; date: DateStr } |
     if (local) return { kind: 'local', title: local.title, date: day.date }
     const slot = day.todoSlots.find((s) => s.id === id)
     if (slot) return { kind: 'todoSlot', title: slot.title, date: day.date }
+    /*
+     * 구글도 찾는다. 못 고치는 건 마찬가지지만 **이유를 정확히 말해주기 위해서**다.
+     * 예전에는 "로컬 일정을 찾을 수 없습니다"만 돌아가서, 모델이 다음에 뭘 해야 할지
+     * 알 수 없어 그대로 멈췄다 — 그 내부 문구가 사용자에게 그대로 보였다.
+     */
+    const google = day.googleEvents.find((g) => g.id === id)
+    if (google) return { kind: 'google', title: google.title, date: day.date }
   }
   return null
 }
@@ -455,6 +470,57 @@ function assertHasChanges(patch: Record<string, unknown>, tool: string, fields: 
   )
 }
 
+/**
+ * 같은 제목의 **미배치** TODO를 찾는다.
+ *
+ * 이미 그리드에 놓인 것까지 막지는 않는다 — "오늘도 운동"처럼 같은 이름을 여러 날에
+ * 두는 것은 정상이다. 백로그에 있는 것을 또 만드는 경우만 사고다.
+ */
+function findBacklogTodo(title: string): { id: string } | null {
+  const { startDate, endDate } = defaultRange()
+  const data = loadScheduleData(datesBetween(startDate, endDate))
+
+  const wanted = title.trim()
+  for (const id of data.backlogIds) {
+    const todo = data.todos.find((t) => t.id === id)
+    if (todo && todo.title.trim() === wanted) return { id }
+  }
+  return null
+}
+
+/**
+ * 오늘 날짜에 **이미 지나간 시각**을 잡으려 하면 막는다.
+ *
+ * ## 왜 코드에 박는가
+ * "10시로 옮겨줘"의 오전/오후는 프롬프트로 여러 번 눌러봤지만 안정되지 않았다.
+ * 3/3까지 올렸다가 다른 규칙을 강조하니 0/2로 되돌아왔다 — 긴 프롬프트에서 규칙끼리
+ * 주의를 뺏는다. 반면 도구가 막고 이유를 말해주는 방식은 이번 세션 내내 안정적이었다.
+ *
+ * 숫자만 말한 "10시"가 과거로 계산됐다면 십중팔구 오후를 오전으로 읽은 것이다.
+ * 거절하면 모델이 한 번 더 생각해 22:00을 낸다.
+ *
+ * ## 지난 시각을 일부러 잡는 경우는?
+ * TODO는 "앞으로 할 일"이라 과거에 새로 잡을 이유가 없다. 이미 지난 것을 손보는 것은
+ * 그리드에서 직접 한다. 그래서 오늘에 한해 막는다 — **어제 이전 날짜는 건드리지 않는다**
+ * (사용자가 날짜를 명시한 것이므로 의도가 분명하다).
+ */
+function assertNotPast(date: DateStr, startTime: TimeStr): void {
+  const { dayStartHour } = getAllSettings()
+  const now = new Date()
+  if (date !== getLogicalDate(now, dayStartHour)) return
+
+  // 논리적 하루는 dayStartHour에 시작하므로, 00~05시대는 달력상 **다음 날**이다.
+  const dayStart = new Date(`${date}T${String(dayStartHour).padStart(2, '0')}:00:00`)
+  const at = new Date(dayStart.getTime() + toDayOffset(startTime, dayStartHour) * 60_000)
+  if (at.getTime() >= now.getTime()) return
+
+  throw new Error(
+    `${startTime}는 오늘 이미 지난 시각입니다 (지금 ${formatLocal(now).slice(-5)}). ` +
+      '숫자만 말한 시각이라면 오전이 아니라 **오후**일 가능성이 큽니다 — ' +
+      `"${startTime}"을 오후로 다시 계산하거나, 정말 그 시각이 맞다면 다음 날로 잡으십시오.`,
+  )
+}
+
 // ── 실행 ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -517,7 +583,20 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
     case 'update_event': {
       const id = str(args, 'id', true)
       const found = findBlock(id)
-      if (!found || found.kind !== 'local') throw new Error(`로컬 일정을 찾을 수 없습니다: ${id}`)
+      if (found?.kind === 'google') {
+        throw new Error(
+          `"${found.title}"은 구글 캘린더에서 온 일정이라 이 앱에서는 읽기 전용입니다. ` +
+            '도구로 고칠 수 없으니 더 시도하지 말고, 구글 캘린더에서 직접 고쳐야 한다고 ' +
+            '한 문장으로 답하고 끝내십시오.',
+        )
+      }
+      if (found?.kind === 'todoSlot') {
+        throw new Error(
+          `"${found.title}"은 TODO입니다. 로컬 일정이 아니므로 update_event가 아니라 ` +
+            'TODO용 도구를 쓰세요 — 길이·시각은 move_todo_slot, 제목·카테고리·완료는 update_todo입니다.',
+        )
+      }
+      if (!found) throw new Error(`로컬 일정을 찾을 수 없습니다: ${id}`)
 
       const eventPatch = {
         title: str(args, 'title'),
@@ -549,12 +628,31 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
     case 'create_todo': {
       const title = str(args, 'title', true)
       const categoryId = str(args, 'categoryId') ?? null
+
+      /*
+       * 백로그에 같은 제목이 이미 있으면 만들지 않는다.
+       *
+       * "장보기를 6시에 배치해줘"는 **있는 것을 놓으라**는 뜻인데 모델이 자꾸 새로 만들어
+       * 같은 항목이 두 개가 됐다. 프롬프트로 여러 번 밀어봤지만 다른 규칙을 강조하면
+       * 이쪽 주의가 흩어져 되돌아왔다. 도구가 막고 이유를 말해주는 편이 확실하다.
+       *
+       * 제목이 정확히 같을 때만 본다 — 비슷한 제목까지 막으면 멀쩡한 생성이 걸린다.
+       */
+      const dup = findBacklogTodo(title)
+      if (dup) {
+        throw new Error(
+          `"${title}"은 이미 미배치 TODO에 있습니다. 새로 만들지 말고 그것을 쓰세요 — ` +
+            `시간대에 놓으려면 place_todo에 todoId="${dup.id}"를 주고, ` +
+            '제목·카테고리만 고치려면 update_todo를 쓰십시오.',
+        )
+      }
       const d = date(args, 'date')
       const startTime = time(args, 'startTime')
       const endTime = time(args, 'endTime')
 
       if (d && startTime && endTime) {
         assertRange(startTime, endTime)
+        assertNotPast(d, startTime)
         applyMutation({ type: 'todo.createAt', title, date: d, startTime, endTime, categoryId })
         return {
           result: { ok: true },
@@ -606,6 +704,7 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
       const startTime = time(args, 'startTime', true)!
       const endTime = time(args, 'endTime', true)!
       assertRange(startTime, endTime)
+      assertNotPast(d, startTime)
 
       /*
        * 이미 배치돼 있으면 **옮긴다.** 예전에는 그냥 슬롯을 하나 더 만들어서,
@@ -647,6 +746,7 @@ export function runTool(name: string, rawArgs: unknown): ToolOutcome {
 
       const slotPatch = { date: date(args, 'date'), startTime, endTime }
       assertHasChanges(slotPatch, 'move_todo_slot', 'date, startTime, endTime')
+      if (startTime) assertNotPast(slotPatch.date ?? found.date, startTime)
 
       applyMutation({ type: 'todoSlot.update', id: slotId, patch: slotPatch })
       return { result: { ok: true }, summary: `TODO 이동 — ${found.title}` }
