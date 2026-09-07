@@ -86,7 +86,7 @@ export default function App() {
 
   if (!settings) {
     return (
-      <div className="widget">
+      <div className="widget hct">
         {error ? <p className="error">실패: {error}</p> : <p className="loading">불러오는 중…</p>}
       </div>
     )
@@ -100,9 +100,13 @@ export default function App() {
   return (
     <div
       className={[
-        'widget',
+        // hctoast 토큰의 스코프. 루트에 한 번 세워두면 하위 컴포넌트가 개별로 붙일 필요가 없다.
+        // (Portal로 나가는 메뉴·모달만은 예외라 각 ui/* 컴포넌트가 스스로 다시 세운다)
+        'widget hct',
         settings.widgetMode === 'move' && 'is-movable',
         clickThrough && 'is-click-through',
+        // 유리(acrylic)가 아니면 창 뒤가 그대로 비친다. 편집 패널만 불투명하게 덮기 위한 표식.
+        settings.backgroundEffect === 'clear' && 'is-clear-bg',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -184,15 +188,8 @@ export default function App() {
 
       {menu && (
         <>
-          {/* 메뉴 밖 아무 데나 누르면 닫힌다. 우클릭으로도 닫히게 해야 메뉴가 겹쳐 쌓이지 않는다. */}
-          <div
-            className="ctx-backdrop"
-            onPointerDown={() => setMenu(null)}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              setMenu(null)
-            }}
-          />
+          {/* 바깥 클릭·Esc로 닫는 것은 Radix가 한다 — 예전의 전체화면 백드롭은
+              z-index가 포털 메뉴보다 높아 메뉴를 덮어버리므로 걷어냈다. */}
           <ContextMenu
             state={menu}
             dayStartHour={settings.dayStartHour}

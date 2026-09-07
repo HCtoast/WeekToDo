@@ -28,12 +28,6 @@
 }
 
 /* 우클릭 메뉴 바깥을 덮어 아무 데나 눌러도 닫히게 한다 */
-.ctx-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-}
-
 .loading {
   padding: 16px;
   font-size: 11px;
@@ -47,4 +41,20 @@
   background: rgb(220 60 60 / 20%);
   font-size: 11px;
   user-select: text;
+}
+
+/* ── 편집 패널은 뒤가 비치면 안 된다 ──────────────────────────────────────
+   위젯 본체는 반투명이어야 배경형 도구답지만, 설정·상세처럼 **읽고 고치는** 화면에서는
+   바탕화면 무늬가 글자와 섞여 읽을 수가 없다.
+
+   OS 유리(acrylic)로 전환하는 방법은 못 쓴다 — `transparent: true`와 함께 쓸 수 없어
+   배경 모드를 바꾸려면 창을 통째로 다시 만들어야 하고(window.ts의 scheduleRecreate),
+   패널을 열 때마다 창이 깜빡이게 된다. 그래서 패널에만 면을 깐다.
+
+   유리 모드에서는 OS가 이미 뒤를 흐려주므로 건드리지 않는다. */
+
+.widget.is-clear-bg .settings,
+.widget.is-clear-bg .detail,
+.widget.is-clear-bg .history {
+  background: var(--surface-raised);
 }

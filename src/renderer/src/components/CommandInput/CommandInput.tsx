@@ -52,7 +52,8 @@ export default function CommandInput() {
   }
 
   return (
-    <div className="cmdwin">
+    // 이 창은 App(위젯)이 아니라 별도 진입점이라 루트의 .hct가 닿지 않는다. 여기서 직접 세운다.
+    <div className="cmdwin hct">
       <div className="cmdwin-row">
         <Sparkles size={16} strokeWidth={2} className="cmdwin-icon" />
         <input

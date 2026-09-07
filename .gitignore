@@ -29,3 +29,6 @@ Thumbs.db
 google-credentials.json
 # Google Cloud Console이 내려주는 OAuth 클라이언트 파일
 client_secret*.json
+
+# 확인용 스크린샷 (로컬 전용)
+screenshot/

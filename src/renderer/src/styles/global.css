@@ -64,8 +64,18 @@ body {
 
 button {
   font: inherit;
-  color: inherit;
   cursor: pointer;
+}
+
+/*
+ * 색은 hctoast 컴포넌트(`data-slot`이 붙은 것)를 비켜간다.
+ *
+ * 이 파일의 규칙은 **레이어 밖**이라 Tailwind의 `@layer utilities`를 특정도와 무관하게
+ * 항상 이긴다. 그래서 여기서 `color`를 주면 `bg-danger` 위의 `text-fg-on-danger` 같은
+ * 지정이 통째로 무시되고, 파스텔 배경에 흰 글자가 얹혀 읽히지 않는다.
+ */
+button:not([data-slot]) {
+  color: inherit;
 }
 
 /* lucide 아이콘은 inline SVG라 기본 baseline 정렬 때문에 글자와 어긋난다. */
@@ -78,9 +88,11 @@ svg {
    네이티브 기본 모양은 유리 배경 위에서 회색 덩어리로 튄다.
    전부 같은 규칙으로 통일하고, select는 기본 화살표를 지우고 직접 그린다. */
 
-input,
-select,
-textarea {
+/* `:not([data-slot])` — 위 button 규칙과 같은 이유다. hctoast 컴포넌트는 자기 모양을
+   유틸리티로 정하는데, 레이어 밖인 이 규칙이 그걸 덮어버린다. */
+input:not([data-slot]),
+select:not([data-slot]),
+textarea:not([data-slot]) {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--field-bg);
@@ -90,15 +102,15 @@ textarea {
   padding: 4px 7px;
 }
 
-input:hover,
-select:hover,
-textarea:hover {
+input:not([data-slot]):hover,
+select:not([data-slot]):hover,
+textarea:not([data-slot]):hover {
   border-color: rgb(255 255 255 / 22%);
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+input:not([data-slot]):focus,
+select:not([data-slot]):focus,
+textarea:not([data-slot]):focus {
   outline: none;
   border-color: var(--accent);
   background: rgb(0 0 0 / 45%);
@@ -134,6 +146,52 @@ input[type='checkbox'] {
   width: 15px;
   height: 15px;
   border-radius: 4px;
+}
+
+/* ── 조밀한 아이콘 버튼 (.mini) ────────────────────────────────────────────
+   원래 WeekGrid.css에 있었지만 BacklogList·SelectionBar도 함께 쓰고 있었다.
+   컴포넌트 CSS에 두면 그 파일을 import하는 화면에서만 살아나므로 공용 파일로 옮긴다.
+
+   ui/button으로 바꾸지 않는 이유: size="sm"이 32px인데 이건 20px짜리다.
+   선택 바 한 줄이 30px라 그대로 넣으면 바가 통째로 커진다.
+   대신 색만 hctoast 토큰에 맞춰 새 컨트롤들과 톤이 갈리지 않게 한다. */
+
+.mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg-muted, var(--text-dim));
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 5px;
+}
+
+.mini:hover {
+  background: var(--action-soft, rgb(255 255 255 / 14%));
+  color: var(--fg, var(--text));
+}
+
+.mini.active {
+  background: var(--action-soft, rgb(124 178 255 / 26%));
+  color: var(--fg, var(--text));
+}
+
+.mini.danger {
+  color: var(--danger, #f08a7c);
+}
+
+.mini.danger:hover {
+  background: var(--danger, #f08a7c);
+  color: var(--fg-on-danger, #1c130f);
+}
+
+.mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── 스크롤바 ──────────────────────────────────────────────────────────────

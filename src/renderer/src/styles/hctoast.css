@@ -32,7 +32,8 @@
   --surface: rgb(22 25 34 / 88%);
   --surface-raised: #1b1e27; /* global.css의 select option 배경과 같은 값 */
 
-  --border: rgb(255 255 255 / 12%); /* global.css --border */
+  /* --border는 여기서 정의하지 않는다 — global.css의 :root 값을 그대로 물려받는다.
+     같은 값을 두 곳에 두면 한쪽만 바뀌었을 때 .hct 안팎의 선이 갈린다. */
   --border-strong: rgb(255 255 255 / 22%); /* global.css input:hover */
 
   --fg: #eceef4; /* global.css --text */
@@ -43,11 +44,11 @@
   --fg-on-solid: #1c130f;
 
   /* 동작색 = 이 앱의 기존 accent(파랑). 다크라 호버는 더 밝게. */
-  --action: #7cb2ff; /* global.css --accent */
+  --action: var(--accent); /* 파랑 하나가 두 이름을 갖는다 — 값은 global.css에만 둔다 */
   --action-hover: #9ac6ff;
-  --action-soft: color-mix(in oklab, #7cb2ff 16%, transparent);
-  --action-ring: color-mix(in oklab, #7cb2ff 50%, transparent);
-  --accent: #7cb2ff;
+  --action-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --action-ring: color-mix(in oklab, var(--accent) 50%, transparent);
+  /* --accent도 global.css :root에서 물려받는다 (위 --border와 같은 이유) */
 
   /* 상태색은 원본의 다크 값 그대로 */
   --danger: #f08a7c;
