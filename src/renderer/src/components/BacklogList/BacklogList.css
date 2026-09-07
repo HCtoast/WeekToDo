@@ -23,26 +23,48 @@
   color: var(--text-dim);
 }
 
+/*
+ * 뱃지로 늘어놓는다 (예전에는 전체 폭 한 줄씩).
+ *
+ * 미배치 TODO는 "아직 자리를 못 잡은 조각"이라 제목만 짧게 보이면 된다.
+ * 한 줄씩 쌓으면 서너 개만 있어도 위젯의 3분의 1을 먹었다. 옆으로 흘려 감으면
+ * 같은 높이에 훨씬 많이 들어가고, 그리드로 끌어다 놓는 동작에도 더 어울린다.
+ */
 .backlog ul {
   list-style: none;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
+/*
+ * 유리 배경 위라 면이 없으면 글자가 벽지와 섞여 안 읽힌다.
+ * 블록과 같은 계열의 면을 깔되, 그리드 블록보다는 눌러서 "아직 배치 안 됨"이 읽히게 한다.
+ */
 .backlog li {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  padding: 3px 4px;
-  border-radius: 5px;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 7px 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  /*
+   * 면의 진하기는 중간을 잡는다.
+   *
+   * 흰 막(9%)만 씌웠을 때는 벽지가 그대로 비쳐 글자가 섞였고, 메뉴처럼 88%까지 올리면
+   * 배경형 위젯인데 칩만 판때기처럼 도드라진다. 글자가 읽힐 만큼만 깐다.
+   */
+  background: rgb(22 25 34 / 50%);
+  font-size: 12px;
+  line-height: 18px;
   /* 그리드로 끌어다 놓으면 시간대가 생기며 승격된다. */
   cursor: grab;
 }
 
 .backlog li:hover {
-  background: rgb(255 255 255 / 7%);
+  background: rgb(22 25 34 / 74%);
+  border-color: var(--border-strong);
 }
 
 .backlog li.done .backlog-title {
@@ -52,8 +74,8 @@
 
 .backlog .check {
   flex: none;
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   padding: 0;
   border: 1.5px solid var(--text-dim);
   border-radius: 4px;
@@ -70,15 +92,16 @@
 }
 
 .backlog .dot {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex: none;
 }
 
 .backlog-title {
-  flex: 1;
+  /* 칩이라 내용만큼만 차지한다 — 길면 줄임표 */
   min-width: 0;
+  max-width: 15em;
   padding: 0;
   border: 0;
   background: transparent;
@@ -97,10 +120,10 @@
 /* 마감 임박도 — 24시간 이상 기본 / 6~24시간 주황 / 6시간 미만 빨강 / 지남 진한 빨강 */
 .due {
   flex: none;
-  padding: 1px 7px;
+  padding: 0 5px;
   border-radius: 999px;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: 10px;
+  line-height: 15px;
   color: var(--text-dim);
   background: rgb(255 255 255 / 9%);
   font-variant-numeric: tabular-nums;
@@ -121,6 +144,25 @@
   background: rgb(180 30 30 / 45%);
   color: #ffc2c2;
   font-weight: 600;
+}
+
+/*
+ * 삭제는 평소에 숨긴다. 칩마다 휴지통이 붙어 있으면 목록이 아이콘 밭이 되고,
+ * 폭도 그만큼 먹는다. 포인터가 올라온 칩에서만 드러낸다.
+ */
+.backlog li .mini.danger {
+  width: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: opacity 120ms ease;
+}
+
+.backlog li:hover .mini.danger,
+.backlog li:focus-within .mini.danger {
+  width: auto;
+  padding: 3px 2px;
+  opacity: 1;
 }
 
 .backlog .empty {

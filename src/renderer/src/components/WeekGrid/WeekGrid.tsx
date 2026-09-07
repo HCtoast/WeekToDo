@@ -141,6 +141,13 @@ export default function WeekGrid({
 
   const [draft, setDraft] = useState<Draft>(null)
   const [addingOn, setAddingOn] = useState<DateStr | null>(null)
+  /**
+   * 미배치 TODO를 끌고 그리드 위를 지날 때 놓일 자리.
+   *
+   * HTML5 드래그라 포인터 드래그처럼 블록이 따라오지 않는다. 어디에 떨어질지 모르는 채로
+   * 손을 놓게 되므로, 같은 크기의 고스트를 미리 그려 준다.
+   */
+  const [dropAt, setDropAt] = useState<{ date: DateStr; startOffset: number } | null>(null)
   const bodyRefs = useRef(new Map<DateStr, HTMLDivElement>())
 
   /** 드래그 미리보기를 원본 데이터에 얹는다. */
@@ -436,6 +443,7 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
   /** 백로그에서 끌어다 놓으면 그 시각에 슬롯이 생기며 그리드로 승격된다. */
   const handleDrop = (e: React.DragEvent, date: DateStr) => {
     e.preventDefault()
+    setDropAt(null)
     const todoId = e.dataTransfer.getData('text/todo-id')
     if (!todoId) return
     const startOffset = Math.max(0, snapToUnit(offsetAt(date, e.clientY), moveUnitMinutes))
@@ -507,7 +515,23 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
               else bodyRefs.current.delete(day.date)
             }}
             style={{ height: 'var(--day-h)' }}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              e.preventDefault()
+              const startOffset = Math.max(
+                0,
+                snapToUnit(offsetAt(day.date, e.clientY), moveUnitMinutes),
+              )
+              setDropAt((at) =>
+                at?.date === day.date && at.startOffset === startOffset
+                  ? at
+                  : { date: day.date, startOffset },
+              )
+            }}
+            onDragLeave={(e) => {
+              // 자식 위로 옮겨가도 leave가 뜬다 — 열 밖으로 정말 나갔을 때만 지운다.
+              if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+              setDropAt((at) => (at?.date === day.date ? null : at))
+            }}
             onDrop={(e) => handleDrop(e, day.date)}
             onPointerDown={() => onSelect(null, day.date)}
             onContextMenu={(e) => {
@@ -537,6 +561,19 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
               출발 자리 — 끄는 동안 "어디서 왔는지"를 남긴다.
               Block이 아니라 빈 상자다. 레이아웃에 끼우면 밀림 계산이 오염된다.
             */}
+            {/* 미배치 TODO를 끌고 왔을 때 놓일 자리 */}
+            {dropAt?.date === day.date && (
+              <div
+                className="drop-preview"
+                style={{
+                  top: dropAt.startOffset * PX_PER_MINUTE,
+                  height: DEFAULT_SLOT_MINUTES * PX_PER_MINUTE,
+                }}
+              >
+                {fromDayOffset(dropAt.startOffset, dayStartHour)}
+              </div>
+            )}
+
             {draft?.kind === 'moveFixed' && draft.originDate === day.date && (
               <div
                 className="drag-origin"

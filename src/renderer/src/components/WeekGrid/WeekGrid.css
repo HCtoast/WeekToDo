@@ -470,3 +470,26 @@
   /* 끄는 동안 커서 아래에서 자리를 잡아야 하므로 다른 블록보다 위로 */
   z-index: 5;
 }
+
+/*
+ * 미배치 TODO를 끌고 왔을 때 놓일 자리.
+ *
+ * HTML5 드래그는 포인터 드래그와 달리 블록이 손을 따라오지 않아서, 어디에 떨어질지
+ * 모르는 채로 놓게 된다. 같은 크기의 윤곽과 시각을 미리 보여준다.
+ */
+.drop-preview {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  display: flex;
+  align-items: flex-start;
+  padding: 2px 6px;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  background: rgb(124 178 255 / 18%);
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  z-index: 4;
+}
