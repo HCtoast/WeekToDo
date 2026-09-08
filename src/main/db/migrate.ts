@@ -3,6 +3,7 @@ import init001 from './migrations/001_init.sql?raw'
 import googleAllDay002 from './migrations/002_google_all_day.sql?raw'
 import categoryPalette003 from './migrations/003_category_palette.sql?raw'
 import googleColors004 from './migrations/004_google_colors.sql?raw'
+import anchorBound005 from './migrations/005_anchor_bound_slots.sql?raw'
 
 interface Migration {
   version: number
@@ -19,6 +20,7 @@ const MIGRATIONS: Migration[] = [
   { version: 2, name: '002_google_all_day', sql: googleAllDay002 },
   { version: 3, name: '003_category_palette', sql: categoryPalette003 },
   { version: 4, name: '004_google_colors', sql: googleColors004 },
+  { version: 5, name: '005_anchor_bound_slots', sql: anchorBound005 },
 ]
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version

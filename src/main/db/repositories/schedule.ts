@@ -338,22 +338,63 @@ export function createTodoSlot(input: {
   date: DateStr
   startTime: TimeStr
   endTime: TimeStr
+  /** 이월이 앵커에서 만들어낸 자리인지. 사용자가 직접 놓은 것은 false(기본) */
+  anchorBound?: boolean
 }): void {
   getDb()
     .prepare(
-      `INSERT INTO todo_time_slots (id, todo_id, date, start_time, end_time) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO todo_time_slots (id, todo_id, date, start_time, end_time, anchor_bound)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run(randomUUID(), input.todoId, input.date, input.startTime, input.endTime)
+    .run(
+      randomUUID(),
+      input.todoId,
+      input.date,
+      input.startTime,
+      input.endTime,
+      input.anchorBound === true ? 1 : 0,
+    )
+}
+
+/** 그날 슬롯을 앵커 재계산에 필요한 만큼만 읽는다. */
+export function listSlotsForRebind(
+  date: DateStr,
+): { id: string; date: DateStr; startTime: TimeStr; endTime: TimeStr; anchorBound: boolean }[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, date, start_time, end_time, anchor_bound
+         FROM todo_time_slots WHERE date = ?`,
+    )
+    .all(date) as {
+    id: string
+    date: DateStr
+    start_time: TimeStr
+    end_time: TimeStr
+    anchor_bound: number
+  }[]
+
+  return rows.map((r) => ({
+    id: r.id,
+    date: r.date,
+    startTime: r.start_time,
+    endTime: r.end_time,
+    anchorBound: r.anchor_bound === 1,
+  }))
 }
 
 export function updateTodoSlot(
   id: string,
-  patch: { date?: DateStr; startTime?: TimeStr; endTime?: TimeStr },
+  patch: { date?: DateStr; startTime?: TimeStr; endTime?: TimeStr; anchorBound?: boolean },
 ): void {
   patchRow(
     'todo_time_slots',
     id,
-    { date: patch.date, start_time: patch.startTime, end_time: patch.endTime },
+    {
+      date: patch.date,
+      start_time: patch.startTime,
+      end_time: patch.endTime,
+      anchor_bound: patch.anchorBound === undefined ? undefined : patch.anchorBound ? 1 : 0,
+    },
     false,
   )
 }

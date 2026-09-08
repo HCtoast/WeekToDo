@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { planQueueRollover, planSlotRollover, type DayQueue } from '@shared/scheduler/rollover'
+import {
+  planAnchorRebind,
+  planQueueRollover,
+  planSlotRollover,
+  type DayQueue,
+} from '@shared/scheduler/rollover'
 
 const DAY_START = 6
 
@@ -179,5 +184,60 @@ describe('planQueueRollover — 하루 경계 초과분을 다음 날로', () =>
     )
 
     expect(plan.moves).toEqual([{ id: 'A', date: '2026-08-05' }])
+  })
+})
+
+describe('planAnchorRebind — 앵커가 바뀌면 묶인 슬롯이 따라간다', () => {
+  const slot = (id: string, startTime: string, endTime: string, anchorBound = true) => ({
+    id,
+    date: '2026-09-07',
+    startTime,
+    endTime,
+    anchorBound,
+  })
+
+  const run = (anchorTime: string, slots: ReturnType<typeof slot>[]) =>
+    planAnchorRebind({ date: '2026-09-07', anchorTime, dayStartHour: 6, slots })
+
+  it('앵커부터 순서대로 이어 붙인다', () => {
+    const moves = run('21:00', [slot('a', '19:00', '20:00'), slot('b', '20:00', '20:30')])
+    expect(moves.map((m) => `${m.id} ${m.startTime}~${m.endTime}`)).toEqual([
+      'a 21:00~22:00',
+      'b 22:00~22:30',
+    ])
+  })
+
+  it('소요시간을 지킨다', () => {
+    const moves = run('08:00', [slot('a', '19:00', '21:30')])
+    expect(`${moves[0]!.startTime}~${moves[0]!.endTime}`).toBe('08:00~10:30')
+  })
+
+  it('사용자가 직접 놓은 슬롯은 건드리지 않는다', () => {
+    const moves = run('21:00', [
+      slot('묶임', '19:00', '20:00'),
+      slot('직접', '14:00', '15:00', false),
+    ])
+    expect(moves.map((m) => m.id)).toEqual(['묶임'])
+  })
+
+  it('지금 놓인 순서를 지킨다 — 앵커만 옮겼는데 줄이 뒤바뀌면 안 된다', () => {
+    // 입력 배열 순서가 아니라 시각 순으로 줄을 세운다.
+    const moves = run('21:00', [slot('뒤', '20:00', '20:30'), slot('앞', '19:00', '20:00')])
+    expect(moves.map((m) => m.id)).toEqual(['앞', '뒤'])
+  })
+
+  it('묶인 것이 없으면 아무것도 옮기지 않는다', () => {
+    expect(run('21:00', [slot('직접', '14:00', '15:00', false)])).toEqual([])
+  })
+
+  it('자정을 넘겨도 소요시간이 유지된다', () => {
+    const moves = run('23:00', [slot('a', '19:00', '20:00')])
+    expect(`${moves[0]!.startTime}~${moves[0]!.endTime}`).toBe('23:00~00:00')
+  })
+
+  it('하루 끝을 넘지 않는다 — 넘기면 그 날에서 사라진다', () => {
+    // 하루 끝은 06:00. 앵커 05:00에 2시간짜리를 붙이면 04:00~06:00으로 당겨진다.
+    const moves = run('05:00', [slot('a', '19:00', '21:00')])
+    expect(`${moves[0]!.startTime}~${moves[0]!.endTime}`).toBe('04:00~06:00')
   })
 })

@@ -1,4 +1,6 @@
 import type { Mutation } from '@shared/ipc-contract'
+import type { DateStr } from '@shared/types'
+import { planAnchorRebind, resolveAnchor } from '@shared/scheduler'
 import * as schedule from '@main/db/repositories/schedule'
 import { getAllSettings } from '@main/db/repositories/settings'
 
@@ -37,9 +39,12 @@ export function applyMutation(m: Mutation): void {
     case 'localEvent.delete':
       return schedule.deleteLocalEvent(m.id)
     case 'anchor.set':
-      return schedule.setAnchor(m.date, m.anchorTime, 'manual')
+      schedule.setAnchor(m.date, m.anchorTime, 'manual')
+      return rebindAnchoredSlots(m.date)
     case 'anchor.clear':
-      return schedule.clearAnchor(m.date)
+      schedule.clearAnchor(m.date)
+      // 지우면 요일 기본값으로 돌아간다 — 그것도 앵커가 바뀐 것이므로 함께 다시 붙인다.
+      return rebindAnchoredSlots(m.date)
     case 'todo.create':
       schedule.createTodo({
         ...m,
@@ -69,7 +74,14 @@ export function applyMutation(m: Mutation): void {
     case 'todoSlot.create':
       return schedule.createTodoSlot(m)
     case 'todoSlot.update':
-      return schedule.updateTodoSlot(m.id, m.patch)
+      /*
+       * 사용자가 직접 옮기면 **앵커와의 연결을 끊는다.**
+       *
+       * 한 번 손으로 정한 자리는 그 사람의 결정이다. 그걸 계속 앵커에 묶어두면
+       * 나중에 앵커를 옮겼을 때 애써 맞춰둔 시각이 저절로 사라진다.
+       * (이 경로는 드래그·상세 편집·자연어 명령이 모두 지나간다)
+       */
+      return schedule.updateTodoSlot(m.id, { ...m.patch, anchorBound: false })
     case 'todoSlot.delete':
       return schedule.deleteTodoSlot(m.id)
     case 'googleEvent.setHeld':
@@ -79,5 +91,41 @@ export function applyMutation(m: Mutation): void {
     case 'googleEvent.delete':
       // 구글 쓰기는 네트워크라 IPC 핸들러가 먼저 가로챈다. 여기까지 오면 배선이 틀린 것.
       throw new Error('구글 이벤트 쓰기는 로컬 DB 입구에서 처리하지 않습니다.')
+  }
+}
+
+/**
+ * 그날의 앵커가 바뀌었으니 **묶인 슬롯들을 새 앵커에 다시 붙인다.**
+ *
+ * 이월로 생긴 슬롯은 앵커에서 파생된 값이라 앵커를 따라가야 한다. 예전에는 이월 시점의
+ * 앵커를 절대 시각으로 굳혀버려서, "오늘은 두 시간 늦게 시작"이라고 미뤄도 큐만 밀리고
+ * 이월분은 옛 자리에 남았다.
+ *
+ * 사용자가 직접 옮긴 슬롯은 `anchor_bound`가 0이라 여기서 걸러진다.
+ */
+function rebindAnchoredSlots(date: DateStr): void {
+  const settings = getAllSettings()
+  const slots = schedule.listSlotsForRebind(date)
+  if (!slots.some((s) => s.anchorBound)) return
+
+  // 행이 없으면 요일 기본값이 앵커다 (설계 원칙 1-1: 앵커 없는 날은 없다).
+  const anchorTime = resolveAnchor(
+    date,
+    schedule.listAnchors([date])[0],
+    settings.weekdayAnchorTimes,
+  )
+
+  for (const move of planAnchorRebind({
+    date,
+    anchorTime,
+    dayStartHour: settings.dayStartHour,
+    slots,
+  })) {
+    // anchorBound는 그대로 둔다 — 앵커를 또 옮기면 다시 따라와야 한다.
+    schedule.updateTodoSlot(move.id, {
+      date: move.date,
+      startTime: move.startTime,
+      endTime: move.endTime,
+    })
   }
 }

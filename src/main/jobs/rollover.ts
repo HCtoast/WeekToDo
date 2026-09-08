@@ -133,6 +133,12 @@ export function runRollover(now = new Date()): RolloverResult {
         date: move.date,
         startTime: move.startTime,
         endTime: move.endTime,
+        /*
+         * 이월이 앉힌 자리는 **앵커에서 파생된 값**이라고 표시한다.
+         * 이후 앵커가 바뀌면 이 슬롯들만 새 앵커에 다시 붙는다.
+         * 사용자가 직접 옮기는 순간 표시가 풀린다 (mutations.ts 참고).
+         */
+        anchorBound: true,
       })
     }
   })()

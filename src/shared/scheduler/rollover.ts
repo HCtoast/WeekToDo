@@ -141,3 +141,52 @@ export function planQueueRollover(days: DayQueue[], dayStartHour: number): Queue
       .map((date) => ({ date, orderedIds: queues.get(date)!.map((q) => q.id) })),
   }
 }
+
+// ── 앵커에 묶인 슬롯 다시 붙이기 ─────────────────────────────────────────────
+
+/**
+ * 앵커가 바뀌었을 때 **묶인 슬롯들을 새 앵커에 다시 붙인다.**
+ *
+ * 이월로 생긴 슬롯은 "앵커에서 파생된 값"이지 사용자가 찍은 절대 좌표가 아니다.
+ * 그런데 시각을 그대로 저장하므로 앵커를 옮겨도 따라가지 않았다 — 큐는 밀렸는데
+ * 이월분만 옛 자리에 남는 어긋난 화면이 됐다.
+ *
+ * 붙이는 방식은 `planSlotRollover`와 같다. 앵커부터 소요시간만큼 순차로 잇고,
+ * 순서는 **지금 놓인 순서**를 그대로 쓴다 — 이월된 뒤에 사용자가 순서를 눈으로 익혔을
+ * 텐데 여기서 다시 정렬하면 앵커만 옮겼는데 줄이 뒤바뀐다.
+ *
+ * 사용자가 직접 옮긴 슬롯(`anchorBound: false`)은 건드리지 않는다.
+ */
+export function planAnchorRebind(input: {
+  date: DateStr
+  anchorTime: TimeStr
+  dayStartHour: number
+  /** 그날의 슬롯 전부. 묶이지 않은 것도 함께 주면 여기서 걸러낸다 */
+  slots: (PendingSlot & { anchorBound: boolean })[]
+}): SlotMove[] {
+  const { date, anchorTime, dayStartHour, slots } = input
+
+  const bound = slots
+    .filter((s) => s.anchorBound)
+    .sort(
+      (a, b) =>
+        toDayOffset(a.startTime, dayStartHour) - toDayOffset(b.startTime, dayStartHour) ||
+        a.id.localeCompare(b.id),
+    )
+
+  let cursor = toDayOffset(anchorTime, dayStartHour)
+
+  return bound.map((slot) => {
+    const duration = durationOf(slot)
+    // 하루 끝을 넘기지 않는다 — 넘기면 다음 논리적 날짜로 감겨 그 날에서 사라진다.
+    const start = Math.min(cursor, MINUTES_PER_DAY - duration)
+    cursor = start + duration
+
+    return {
+      id: slot.id,
+      date,
+      startTime: fromDayOffset(start, dayStartHour),
+      endTime: fromDayOffset(start + duration, dayStartHour),
+    }
+  })
+}
