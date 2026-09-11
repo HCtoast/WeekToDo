@@ -2,14 +2,9 @@
 import { Anchor, CalendarDays, Check, Play, Plus } from 'lucide-react'
 import type { DaySchedule, Mutation } from '@shared/ipc-contract'
 import type { CategoryRow, DateStr } from '@shared/types'
-import {
-  ANCHOR_STEP_MINUTES,
-  STACKED_TODO_OFFSET_PX,
-  TODO_CLUSTER_ROW_PX,
-} from '@shared/constants'
+import { ANCHOR_STEP_MINUTES, STACKED_TODO_OFFSET_PX } from '@shared/constants'
 import {
   MINUTES_PER_DAY,
-  buildTodoClusters,
   fromDayOffset,
   layoutDay,
   snapToUnit,
@@ -17,7 +12,6 @@ import {
   weekdayOf,
   type PlacedBlock,
   type QueueItem,
-  type TodoCluster as TodoClusterData,
 } from '@shared/scheduler'
 import { accentColor, alternateLightness, ensureReadableBackground } from '@shared/color'
 import type { ContextMenuState } from '@renderer/components/ContextMenu/ContextMenu'
@@ -38,14 +32,6 @@ const PX_PER_MINUTE = 0.9
 const STACKED_BLOCK_MIN_PX = 36
 /** 백로그에서 끌어다 놓은 TODO의 기본 길이 */
 const DEFAULT_SLOT_MINUTES = 60
-
-/**
- * 묶음 카드의 한 줄 높이를 분으로 환산한 값.
- *
- * 배치 계산은 화면 배율을 모르는 순수 레이어라(설계 원칙 2) px을 넘기지 못한다.
- * 화면 배율을 아는 쪽이 여기서 한 번 환산해 넘긴다.
- */
-const TODO_CLUSTER_ROW_MINUTES = TODO_CLUSTER_ROW_PX / PX_PER_MINUTE
 
 /**
  * 종일 일정 칩 한 줄의 높이(px). 칩 17px + 아래 여백 2px.
@@ -238,15 +224,16 @@ export default function WeekGrid({
     () =>
       days.map((raw) => {
         const day = withDraft(raw)
-        const laid = layoutDay({
-          anchorTime: day.anchorTime,
-          dayStartHour,
-          queue: day.queue,
-          googleEvents: day.googleEvents,
-          todoSlots: day.todoSlots,
-        })
-        // 겹친 TODO는 단독 블록이 아니라 묶음 카드로 그린다.
-        return { day, ...laid, ...buildTodoClusters(laid.blocks, TODO_CLUSTER_ROW_MINUTES) }
+        return {
+          day,
+          ...layoutDay({
+            anchorTime: day.anchorTime,
+            dayStartHour,
+            queue: day.queue,
+            googleEvents: day.googleEvents,
+            todoSlots: day.todoSlots,
+          }),
+        }
       }),
     [days, withDraft, dayStartHour],
   )
@@ -523,7 +510,7 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
         ))}
       </div>
 
-      {laidOut.map(({ day, blocks, overflow, clusters, clusteredIds }) => (
+      {laidOut.map(({ day, blocks, overflow }) => (
         <div key={day.date} className={`day ${day.date === today ? 'is-today' : ''}`}>
           {/*
             종일 일정 — 날짜 머리 위, 자기 요일 열 안에 놓는다.
@@ -625,41 +612,21 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
               />
             )}
 
-            {/* 묶음 카드에 들어간 TODO는 빼고 그린다 — 안 빼면 같은 자리에 두 번 그려진다. */}
-            {blocks
-              .filter((b) => !clusteredIds.has(b.id))
-              .map((b) => (
-                <Block
-                  key={`${b.kind}-${b.id}`}
-                  block={b}
-                  date={day.date}
-                  dragging={draft?.kind === 'moveFixed' && draft.id === b.id}
-                  // 시간이 지났다는 것은 표시일 뿐 완료가 아니다 (TODO는 자동 완료되지 않는다).
-                  past={day.date < today || (day.date === today && b.endOffset <= nowOffset)}
-                  selected={selectedId === b.id}
-                  colorById={colorById}
-                  completableIds={completableIds}
-                  onSelect={onSelect}
-                  onContextMenu={onContextMenu}
-                  onReorder={startReorder}
-                  onResize={startResize}
-                  onFixedMove={startFixedMove}
-                  onToggleDone={toggleDone}
-                />
-              ))}
-
-            {clusters.map((c) => (
-              <TodoClusterCard
-                key={c.id}
-                cluster={c}
+            {blocks.map((b) => (
+              <Block
+                key={`${b.kind}-${b.id}`}
+                block={b}
                 date={day.date}
-                today={today}
-                nowOffset={nowOffset}
-                selectedId={selectedId}
-                draggingId={draft?.kind === 'moveFixed' ? draft.id : null}
+                dragging={draft?.kind === 'moveFixed' && draft.id === b.id}
+                // 시간이 지났다는 것은 표시일 뿐 완료가 아니다 (TODO는 자동 완료되지 않는다).
+                past={day.date < today || (day.date === today && b.endOffset <= nowOffset)}
+                selected={selectedId === b.id}
                 colorById={colorById}
+                completableIds={completableIds}
                 onSelect={onSelect}
                 onContextMenu={onContextMenu}
+                onReorder={startReorder}
+                onResize={startResize}
                 onFixedMove={startFixedMove}
                 onToggleDone={toggleDone}
               />
@@ -802,126 +769,6 @@ function QuickAdd({
   )
 }
 
-/**
- * 겹친 TODO 묶음 카드.
- *
- * 카드는 **상자일 뿐이다** — 겹친 것들이 걸쳐 있는 전체 구간을 점선으로 두르기만 하고,
- * 실제 항목은 그 안에서 한 줄씩 그린다. 줄은 서로 절대 겹치지 않으므로 가려지거나
- * 잘리는 것이 없다 (예전 계단식 쌓기의 문제).
- *
- * 카드 자신은 포인터를 받지 않는다(`pointer-events: none`). 카드가 구간 전체를 덮기 때문에
- * 받으면 줄 사이의 빈 곳에서 "이 시각에 TODO 만들기" 우클릭이 막힌다 — 그 빈 곳은
- * 그리드지 카드가 아니다. 줄만 다시 포인터를 켠다.
- */
-function TodoClusterCard({
-  cluster,
-  date,
-  today,
-  nowOffset,
-  selectedId,
-  draggingId,
-  colorById,
-  onSelect,
-  onContextMenu,
-  onFixedMove,
-  onToggleDone,
-}: {
-  cluster: TodoClusterData
-  date: DateStr
-  today: DateStr
-  nowOffset: number
-  selectedId: string | null
-  /** 지금 끌리고 있는 블록의 id. 끌리는 줄만 반투명하게 그린다. */
-  draggingId: string | null
-  colorById: Map<string, string>
-  onSelect: (b: PlacedBlock | null, date: DateStr) => void
-  onContextMenu: (state: ContextMenuState) => void
-  onFixedMove: (e: React.PointerEvent, date: DateStr, b: PlacedBlock) => void
-  onToggleDone: (b: PlacedBlock) => void
-}) {
-  return (
-    <div
-      className="todo-cluster"
-      style={{
-        top: cluster.startOffset * PX_PER_MINUTE,
-        height: (cluster.endOffset - cluster.startOffset) * PX_PER_MINUTE,
-        // 아래에 구글·로컬 블록이 깔려 있으면 그쪽 색 띠가 드러나도록 한 칸 민다.
-        left: cluster.stackIndex * STACKED_TODO_OFFSET_PX,
-        right: 0,
-      }}
-    >
-      {cluster.rows.map(({ block, topMinutes }) => {
-        const base = block.categoryId ? colorById.get(block.categoryId) : undefined
-        const past = date < today || (date === today && block.endOffset <= nowOffset)
-
-        return (
-          <div
-            key={block.id}
-            className={[
-              'cluster-row',
-              selectedId === block.id && 'is-selected',
-              draggingId === block.id && 'is-dragging',
-              past && 'is-past',
-              block.meta.completed && 'is-done',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            style={{
-              top: topMinutes * PX_PER_MINUTE,
-              height: TODO_CLUSTER_ROW_PX,
-              background: base ? ensureReadableBackground(base) : undefined,
-              borderLeftColor: accentColor(base),
-            }}
-            title={`${block.title} ${block.startTime}~${block.endTime}`}
-            onPointerDown={(e) => {
-              e.stopPropagation()
-              // 우클릭은 선택만 — 메뉴를 열려다 줄이 끌려가면 안 된다.
-              if (e.button !== 0) return onSelect(block, date)
-              onSelect(block, date)
-              onFixedMove(e, date, block)
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onContextMenu({ x: e.clientX, y: e.clientY, target: { kind: 'block', date, block } })
-            }}
-          >
-            <button
-              className={`check ${block.meta.completed ? 'on' : ''}`}
-              title={block.meta.completed ? '완료 취소' : '완료'}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleDone(block)
-              }}
-            >
-              {block.meta.completed && <Check size={9} strokeWidth={3.5} />}
-            </button>
-            <span className="block-label">{block.title}</span>
-            {/*
-              끝 시각은 한 줄짜리라 도형으로 나타낼 수 없으므로 글자로 적는다.
-              이게 카드 방식의 핵심 교환이다 — 가려지지 않는 대신 길이를 읽어야 한다.
-            */}
-            <span className="cluster-row-time">
-              {block.startTime}~{block.endTime}
-            </span>
-            {past && block.meta.completed !== true && <span className="overdue-badge">지남</span>}
-          </div>
-        )
-      })}
-
-      {cluster.hiddenCount > 0 && (
-        <span
-          className="cluster-more"
-          title={`카드에 자리가 없어 접힌 ${cluster.hiddenCount}개. 겹침을 풀거나 위젯을 키우면 보입니다.`}
-        >
-          +{cluster.hiddenCount}
-        </span>
-      )}
-    </div>
-  )
-}
-
 function Block({
   block,
   date,
@@ -1010,12 +857,15 @@ function Block({
         top: block.startOffset * PX_PER_MINUTE,
         height: heightPx,
         /*
-         * 겹친 TODO는 열을 나누지 않고 오른쪽으로 조금씩 밀어 얹는다 (stackIndex).
-         * 겹치지 않으면 0이라 아무것도 안 밀린다.
+         * 겹치면 나란히 나눠 놓는다 (column / columnCount). 열은 종류를 섞지 않고
+         * 배정되므로 TODO끼리만 나뉘고 구글은 폭을 잃지 않는다.
+         *
+         * stackIndex는 그 위에 얹히는 경우의 한 칸 밀기다 — TODO가 구글·로컬 위에 있으면
+         * 아래 블록의 왼쪽 색 띠가 드러나게 비켜준다. 아래에 아무것도 없으면 0이다.
          */
         left: `calc(${(block.column / block.columnCount) * 100}% + ${block.stackIndex * STACKED_TODO_OFFSET_PX}px)`,
         width: `calc(${100 / block.columnCount}% - ${block.stackIndex * STACKED_TODO_OFFSET_PX}px)`,
-        // 뒤에 쌓인 것이 위로 오게 한다. 드래그 중(z-index 5)보다는 낮게 둔다.
+        // 얹힌 TODO가 아래 블록보다 위로 오게 한다. 드래그 중(z-index 5)보다는 낮게 둔다.
         zIndex: block.stackIndex > 0 ? 1 + block.stackIndex : undefined,
         background,
         borderLeftColor: accent,

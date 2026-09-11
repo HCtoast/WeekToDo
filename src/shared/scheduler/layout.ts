@@ -79,17 +79,14 @@ function makeBlock(
 }
 
 /**
- * 겹치는 블록을 나란히 놓기 위해 열을 배정한다 (Google Calendar와 같은 방식).
+ * 서로 겹치는 블록에 열을 배정한다 (Google Calendar와 같은 방식).
  *
- * 서로 겹치는 블록들을 하나의 무리로 묶고, 무리 안에서 "이미 끝난 열"을 재사용한다.
- * 로컬 이벤트끼리는 구조상 겹치지 않고 로컬-구글도 밀림 로직이 막으므로,
- * 실제로 열이 나뉘는 것은 구글끼리다.
+ * 겹치는 것들을 하나의 무리로 묶고, 무리 안에서 "이미 끝난 열"을 재사용한다.
+ * 화면에서 블록 폭은 `1 / columnCount`, 위치는 `column / columnCount`가 된다.
  *
- * **TODO 슬롯은 여기서 빠진다.** 열을 나누면 30분짜리가 반으로 잘려 제목도 시각도
- * 안 보인다. TODO는 하루 위에 떠 있는 핀에 가까우므로, 겹치면 나란히 자르는 대신
- * `buildTodoClusters`가 묶음 카드에 한 줄씩 담는다. 밀림 계산에서 빼는 것과 같은 이유다.
+ * @param blocks **같은 종류끼리만 모은** startOffset 오름차순 배열
  */
-function assignColumns(blocks: PlacedBlock[]): void {
+function assignColumnsWithin(blocks: PlacedBlock[]): void {
   let group: PlacedBlock[] = []
   let groupEnd = -1
 
@@ -110,18 +107,33 @@ function assignColumns(blocks: PlacedBlock[]): void {
     for (const b of group) b.columnCount = columnEnds.length
 
     group = []
+    groupEnd = -1
   }
 
   for (const b of blocks) {
-    if (b.kind === 'todo') continue
-    if (group.length > 0 && b.startOffset >= groupEnd) {
-      flush()
-      groupEnd = -1
-    }
+    if (group.length > 0 && b.startOffset >= groupEnd) flush()
     group.push(b)
     groupEnd = Math.max(groupEnd, b.endOffset)
   }
   flush()
+}
+
+/**
+ * 열 배정은 **종류를 섞지 않는다.** 구글·로컬이 한 무리, TODO가 따로 한 무리다.
+ *
+ * TODO를 구글과 같은 무리에 넣으면 "수업 시간에 과제를 얹는" 정상적인 사용에서 둘 다
+ * 반쪽이 된다. TODO는 구글과 폭을 나누는 관계가 아니라 **위에 얹히는** 관계다
+ * (설계 원칙 3 — 구글은 고정 장애물이고 폭을 잃지 않는다). 얹힐 때 아래가 완전히
+ * 가려지지 않도록 `assignStackIndex`가 한 칸 민다.
+ *
+ * TODO끼리는 나란히 나눈다. 예전에는 이것도 계단처럼 밀어 쌓았는데, 미는 만큼 폭이 줄어
+ * 오른쪽 끝이 맞춰지는 탓에 뒤 블록이 앞 블록 **안에** 들어앉았다 — 앞 블록의 시각 글자가
+ * 베이고, 남의 구간에 완전히 포함된 TODO는 실오라기만 남아 아예 읽을 수 없었다.
+ * 나란히 놓으면 좁아지는 대신 서로를 가리지 않는다.
+ */
+function assignColumns(blocks: PlacedBlock[]): void {
+  assignColumnsWithin(blocks.filter((b) => b.kind !== 'todo'))
+  assignColumnsWithin(blocks.filter((b) => b.kind === 'todo'))
 }
 
 /**
@@ -130,10 +142,7 @@ function assignColumns(blocks: PlacedBlock[]): void {
  * 전폭으로 얹으면 아래 구글 일정을 통째로 덮어 "그 시간에 뭐가 있었는지"가 사라진다.
  * 한 칸만 밀어도 아래 블록의 왼쪽 색 띠가 드러나 존재가 읽힌다.
  *
- * **TODO끼리의 겹침은 여기서 다루지 않는다** — `buildTodoClusters`가 묶음 카드로 모은다.
- * 예전에는 겹친 TODO를 레인 번호만큼 계단처럼 밀었는데, 미는 만큼 폭이 줄어 오른쪽 끝이
- * 맞춰지는 탓에 뒤 블록이 앞 블록 **안에** 들어앉았다. 그래서 앞 블록의 시각 글자가
- * 베이고, 완전히 포함된 TODO는 실오라기만 남았다.
+ * TODO끼리의 겹침은 여기서 다루지 않는다 — `assignColumns`가 나란히 나눈다.
  */
 function assignStackIndex(blocks: PlacedBlock[]): void {
   const fixed = blocks.filter((b) => b.kind !== 'todo')
@@ -141,9 +150,7 @@ function assignStackIndex(blocks: PlacedBlock[]): void {
   for (const b of blocks) {
     if (b.kind !== 'todo') continue
 
-    b.stackIndex = fixed.some(
-      (f) => f.startOffset < b.endOffset && b.startOffset < f.endOffset,
-    )
+    b.stackIndex = fixed.some((f) => f.startOffset < b.endOffset && b.startOffset < f.endOffset)
       ? 1
       : 0
   }

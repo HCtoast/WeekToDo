@@ -376,8 +376,7 @@
  * 자식이 되돌릴 수 없으므로(`.check { opacity: 1 }`로는 안 된다) 글자만 따로 감쌌다 —
  * 다시 눌러 미완료로 돌리려면 체크박스가 또렷해야 한다.
  */
-.block.is-done .block-label,
-.cluster-row.is-done .block-label {
+.block.is-done .block-label {
   opacity: 0.5;
   text-decoration: line-through;
 }
@@ -420,103 +419,12 @@
 }
 
 /* 체크박스와 시각도 같은 검은 글자색을 쓴다 */
-/* ── 겹친 TODO 묶음 카드 ───────────────────────────────────────────────────
-   겹치면 폭을 나누지도(제목이 "겹침A.."로 줄어든다) 겹쳐 쌓지도(뒤가 앞을 덮는다)
-   않는다. 걸쳐 있는 구간을 상자로 두르고 그 안에서 한 줄에 하나씩 그린다. */
-
-.todo-cluster {
-  position: absolute;
-  /*
-   * 카드는 상자일 뿐이라 포인터를 받지 않는다.
-   * 구간 전체를 덮으므로 받으면 줄 사이 빈 곳에서 그리드 우클릭("이 시각에 TODO")이 막힌다.
-   * 그 빈 곳은 카드가 아니라 그리드다.
-   */
-  pointer-events: none;
-  /* TODO끼리는 점선 — 겹침이 허용되는 유일한 종류라는 기존 관례를 카드도 따른다. */
-  border: 1px dashed rgb(255 255 255 / 20%);
-  border-radius: 6px;
-  /* 한 줄도 안 들어가는 짧은 구간에서 줄이 카드 밖으로 삐져나오지 않게 받쳐준다. */
-  min-height: 18px;
-}
-
-.cluster-row {
-  position: absolute;
-  /* 카드 테두리에 딱 붙지 않게 안쪽으로 조금 들인다 */
-  inset-inline: 2px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 4px;
-  /* 줄만 다시 포인터를 켠다 (카드는 none) */
-  pointer-events: auto;
-  /* 블록과 같은 글자 규칙 — 배경이 무엇이든 검정, 밝기는 ensureReadableBackground가 보장 */
-  color: var(--block-text);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  border: 1px solid rgb(0 0 0 / 30%);
-  /* 왼쪽 색 띠는 모든 블록의 공통 규칙이다. 줄에서는 카테고리를 읽는 유일한 단서다. */
-  border-left: 4px solid var(--text-dim);
-  border-radius: 4px;
-  background: rgb(168 176 194 / 92%);
-  cursor: grab;
-}
-
-.cluster-row-time {
-  flex: none;
-  font-size: 10px;
-  font-weight: 500;
-  opacity: 0.72;
-  font-variant-numeric: tabular-nums;
-}
-
-.cluster-row.is-selected {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-  z-index: 5;
-}
-
-/* 시간이 지난 것은 흐리게만 한다 — 완료는 절대 건드리지 않는다 (설계 원칙 4). */
-.cluster-row.is-past {
-  opacity: 0.68;
-}
-
-.cluster-row.is-past.is-selected {
-  opacity: 1;
-}
-
-/* 끌리는 줄 = 목적지 미리보기. 블록과 같은 규칙으로 왼쪽 띠는 실선으로 남긴다. */
-.cluster-row.is-dragging {
-  opacity: 0.72;
-  border-top-style: dashed;
-  border-right-style: dashed;
-  border-bottom-style: dashed;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 45%);
-  z-index: 5;
-}
-
-/* 카드 높이가 모자라 접힌 개수. 그리드의 `.overflow`와 같은 성격의 알림이라 모양도 맞춘다. */
-.cluster-more {
-  position: absolute;
-  right: 3px;
-  bottom: 2px;
-  padding: 0 4px;
-  border-radius: 4px;
-  /* 줄 위에 겹칠 수 있으므로 불투명하게 */
-  background: #2a2f3d;
-  color: var(--text-dim);
-  font-size: 10px;
-  line-height: 14px;
-  pointer-events: auto;
-}
-
 /*
  * 완료 체크. 백로그(`.backlog .check`)와 같은 모양이되 색만 다르다 —
  * 패널은 토큰 색을, 블록은 `currentcolor`(검정)를 쓴다. 블록 배경이 카테고리마다
  * 다른 파스텔이라 고정색을 쓰면 어떤 색 위에서는 안 보인다.
  */
-.block .check,
-.cluster-row .check {
+.block .check {
   position: relative;
   flex: none;
   display: inline-flex;
@@ -536,20 +444,17 @@
  * 11px은 눌러서 맞히기에 좁다. 레이아웃은 그대로 두고 판정 영역만 넓힌다 —
  * 버튼 자체를 키우면 제목이 밀리고, 30분짜리 블록(27px)에는 그럴 여유가 없다.
  */
-.block .check::after,
-.cluster-row .check::after {
+.block .check::after {
   content: '';
   position: absolute;
   inset: -3px;
 }
 
-.block .check:hover,
-.cluster-row .check:hover {
+.block .check:hover {
   opacity: 1;
 }
 
-.block .check.on,
-.cluster-row .check.on {
+.block .check.on {
   background: currentcolor;
   opacity: 1;
 }
@@ -562,8 +467,7 @@
  * 함께 바뀌어** 칸이 흰색이 된다 — currentcolor는 자기 요소의 color를 본다.
  * 그래서 색은 안쪽 svg에만 준다.
  */
-.block .check.on svg,
-.cluster-row .check.on svg {
+.block .check.on svg {
   color: rgb(255 255 255 / 92%);
 }
 

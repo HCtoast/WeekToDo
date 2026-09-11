@@ -57,7 +57,12 @@ export interface PlacedBlock {
   endTime: TimeStr
   categoryId: string | null
   meta: BlockMeta
-  /** 겹치는 블록을 나란히 놓기 위한 열 번호 (0부터) */
+  /**
+   * 겹치는 블록을 나란히 놓기 위한 열 번호 (0부터).
+   *
+   * 열은 **종류를 섞지 않고** 배정된다 — 구글·로컬이 한 무리, TODO가 따로 한 무리다.
+   * 그래서 TODO가 구글 위에 얹혀도 구글은 폭을 잃지 않는다.
+   */
   column: number
   /** 같은 겹침 무리의 열 개수. 블록 폭 = 1 / columnCount */
   columnCount: number
@@ -65,7 +70,7 @@ export interface PlacedBlock {
    * TODO 슬롯이 다른 블록 위에 얹혔으면 1, 아니면 0. 다른 종류는 항상 0이다.
    *
    * 한 칸 밀어 아래 블록의 왼쪽 색 띠가 드러나게 하려는 값이다.
-   * TODO끼리 겹치는 경우는 이 값이 아니라 `buildTodoClusters`의 묶음 카드가 맡는다.
+   * TODO끼리 겹치는 경우는 이 값이 아니라 `column`이 나란히 나눠 맡는다.
    */
   stackIndex: number
   /** 같은 카테고리가 연속될 때의 위치. 명도 교차 렌더링에 쓴다. */
