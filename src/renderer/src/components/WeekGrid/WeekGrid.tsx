@@ -130,6 +130,34 @@ export default function WeekGrid({
     [categories],
   )
 
+  /*
+   * 블록의 완료를 사용자가 직접 뒤집는다. 다시 누르면 그대로 미완료로 돌아온다.
+   *
+   * 시각은 절대 건드리지 않는다 — 완료했다고 블록이 사라지거나 움직이면 "무엇을 언제 했는지"의
+   * 기록이 깨진다 (설계 원칙 4·6). 흐려지고 제목에 취소선만 그어진다.
+   */
+  const toggleDone = useCallback(
+    (block: PlacedBlock) => {
+      const completed = block.meta.completed !== true
+      if (block.kind === 'todo') {
+        /*
+         * 완료는 **슬롯이 아니라 원본 TODO**에 달려 있다. 같은 TODO에 슬롯이 여럿일 수 있고
+         * 이월도 슬롯을 옮기는 것이라, 슬롯에 달면 어느 자리에서 체크했는지에 따라 상태가 갈린다.
+         */
+        const todoId = block.meta.todoId
+        if (todoId === undefined) {
+          // schedule-view가 TODO 블록에는 항상 넣어준다. 비어 있으면 조회 쪽이 깨진 것이다.
+          console.error('TODO 블록에 todoId가 없어 완료를 바꿀 수 없습니다.', block.id)
+          return
+        }
+        void mutate({ type: 'todo.update', id: todoId, patch: { completed } })
+        return
+      }
+      void mutate({ type: 'localEvent.update', id: block.id, patch: { completed } })
+    },
+    [mutate],
+  )
+
   /**
    * 종일 일정이 가장 많은 날의 개수. 0이면 띠 자체를 그리지 않는다.
    * 모든 열이 이만큼 같은 높이를 쓰므로 열끼리 아래 내용이 어긋나지 않는다.
@@ -600,6 +628,7 @@ const startFixedMove = (e: React.PointerEvent, date: DateStr, block: PlacedBlock
                 onReorder={startReorder}
                 onResize={startResize}
                 onFixedMove={startFixedMove}
+                onToggleDone={toggleDone}
               />
             ))}
 
@@ -753,6 +782,7 @@ function Block({
   onReorder,
   onResize,
   onFixedMove,
+  onToggleDone,
 }: {
   block: PlacedBlock
   date: DateStr
@@ -767,6 +797,7 @@ function Block({
   onReorder: (e: React.PointerEvent, date: DateStr, b: PlacedBlock) => void
   onResize: (e: React.PointerEvent, date: DateStr, b: PlacedBlock) => void
   onFixedMove: (e: React.PointerEvent, date: DateStr, b: PlacedBlock) => void
+  onToggleDone: (b: PlacedBlock) => void
 }) {
   /*
    * 색의 출처가 둘이다.
@@ -853,10 +884,27 @@ function Block({
       }}
     >
       <span className="block-title">
-        {showCheck && <i className={`check ${block.meta.completed ? 'on' : ''}`} />}
+        {showCheck && (
+          <button
+            className={`check ${block.meta.completed ? 'on' : ''}`}
+            title={block.meta.completed ? '완료 취소' : '완료'}
+            /*
+             * 블록의 `onPointerDown`이 선택과 드래그를 **동시에** 시작하므로 여기서 끊는다.
+             * 안 끊으면 체크하려고 누른 1~2px 떨림이 블록 이동으로 잡혀서, 체크는 되지만
+             * 블록이 옆 시각으로 슬쩍 옮겨간다.
+             */
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleDone(block)
+            }}
+          >
+            {block.meta.completed && <Check size={9} strokeWidth={3.5} />}
+          </button>
+        )}
         {/* 구글에서 온 일정이라는 걸 왼쪽 띠만으로는 알아보기 어려워 아이콘을 함께 둔다. */}
         {block.kind === 'google' && <CalendarDays className="block-src" size={11} strokeWidth={2.5} />}
-        {block.title}
+        <span className="block-label">{block.title}</span>
       </span>
       <span className="block-time">
         {block.startTime}

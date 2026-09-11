@@ -369,7 +369,14 @@
   z-index: 5;
 }
 
-.block.is-done .block-title {
+/*
+ * 완료 표시는 **제목 글자에만** 건다.
+ *
+ * `.block-title` 전체에 걸면 그 안의 체크박스까지 반투명해진다. opacity는 그룹을 만들어
+ * 자식이 되돌릴 수 없으므로(`.check { opacity: 1 }`로는 안 된다) 글자만 따로 감쌌다 —
+ * 다시 눌러 미완료로 돌리려면 체크박스가 또렷해야 한다.
+ */
+.block.is-done .block-label {
   opacity: 0.5;
   text-decoration: line-through;
 }
@@ -398,22 +405,70 @@
   gap: 4px;
   white-space: nowrap;
   overflow: hidden;
+}
+
+/*
+ * 제목 글자. 체크박스·달력 아이콘과 형제로 두어야 그것들은 줄지 않고 글자만 줄어든다.
+ * `text-overflow`는 상속되지 않고 flex 컨테이너에서 익명 항목에도 안 걸리므로
+ * 말줄임은 여기에 직접 준다 (min-width: 0이 있어야 flex 안에서 줄어든다).
+ */
+.block-label {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* 체크박스와 시각도 같은 검은 글자색을 쓴다 */
+/*
+ * 완료 체크. 백로그(`.backlog .check`)와 같은 모양이되 색만 다르다 —
+ * 패널은 토큰 색을, 블록은 `currentcolor`(검정)를 쓴다. 블록 배경이 카테고리마다
+ * 다른 파스텔이라 고정색을 쓰면 어떤 색 위에서는 안 보인다.
+ */
 .block .check {
+  position: relative;
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 11px;
   height: 11px;
+  padding: 0;
   border: 1.5px solid currentcolor;
   border-radius: 3px;
+  background: transparent;
+  color: inherit;
   opacity: 0.8;
+}
+
+/*
+ * 11px은 눌러서 맞히기에 좁다. 레이아웃은 그대로 두고 판정 영역만 넓힌다 —
+ * 버튼 자체를 키우면 제목이 밀리고, 30분짜리 블록(27px)에는 그럴 여유가 없다.
+ */
+.block .check::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+}
+
+.block .check:hover {
+  opacity: 1;
 }
 
 .block .check.on {
   background: currentcolor;
   opacity: 1;
+}
+
+/*
+ * 체크 표시만 흰색으로 뒤집는다.
+ *
+ * 칸이 `currentcolor`(= 블록 글자색, 검정)로 차므로 표시도 currentcolor면 검정 위 검정이
+ * 되어 사라진다. 그런데 `.check.on`에 `color`를 주면 **같은 요소의 `background: currentcolor`도
+ * 함께 바뀌어** 칸이 흰색이 된다 — currentcolor는 자기 요소의 color를 본다.
+ * 그래서 색은 안쪽 svg에만 준다.
+ */
+.block .check.on svg {
+  color: rgb(255 255 255 / 92%);
 }
 
 .block-time {
