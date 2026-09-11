@@ -24,7 +24,20 @@
     "appId": "kr.jaewon.weektodo-widget",
     "productName": "주간 타임블록",
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "!node_modules/better-sqlite3/{deps,src,build}/**/*",
+      "!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-{x64,arm64}.node",
+      "!node_modules/better-sqlite3/prebuilds/win32-arm64.node",
+      "!node_modules/web-streams-polyfill/dist/{polyfill,polyfill.es6,polyfill.es2018,ponyfill,ponyfill.es6}.{js,mjs,min.js}",
+      "!node_modules/web-streams-polyfill/dist/ponyfill.es2018.mjs",
+      "!node_modules/web-streams-polyfill/dist/types/**/*",
+      "!node_modules/@googleapis/calendar/{index.ts,build/tsconfig.tsbuildinfo}",
+      "!node_modules/**/*.map",
+      "!node_modules/**/*.d.ts"
+    ],
+    "electronLanguages": [
+      "ko",
+      "en-US"
     ],
     "extraResources": [
       {
@@ -54,14 +67,10 @@
   "dependencies": {
     "@googleapis/calendar": "^16.0.0",
     "better-sqlite3": "^13.0.2",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "electron-store": "^8.2.0",
-    "google-auth-library": "^10.5.0",
-    "lucide-react": "^1.28.0",
-    "radix-ui": "^1.6.7",
-    "tailwind-merge": "^3.6.0"
+    "google-auth-library": "^10.5.0"
   },
+  "//devDependencies": "렌더러가 쓰는 것은 전부 여기 둔다 — Vite가 out/renderer 번들 안에 넣으므로 설치본에 node_modules로 또 들어갈 필요가 없다 (react/react-dom과 같은 이유).",
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.3.3",
@@ -70,12 +79,17 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^3.1.0",
+    "lucide-react": "^1.28.0",
     "lucide-static": "^1.28.0",
+    "radix-ui": "^1.6.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.8.0",
     "vite": "^6.3.0",
