@@ -86,8 +86,8 @@ function makeBlock(
  * 실제로 열이 나뉘는 것은 구글끼리다.
  *
  * **TODO 슬롯은 여기서 빠진다.** 열을 나누면 30분짜리가 반으로 잘려 제목도 시각도
- * 안 보인다. TODO는 하루 위에 떠 있는 핀에 가까우므로 나란히 자르는 대신
- * `assignStackIndex`가 조금씩 밀어서 겹쳐 쌓는다. 밀림 계산에서 빼는 것과 같은 이유다.
+ * 안 보인다. TODO는 하루 위에 떠 있는 핀에 가까우므로, 겹치면 나란히 자르는 대신
+ * `buildTodoClusters`가 묶음 카드에 한 줄씩 담는다. 밀림 계산에서 빼는 것과 같은 이유다.
  */
 function assignColumns(blocks: PlacedBlock[]): void {
   let group: PlacedBlock[] = []
@@ -125,35 +125,27 @@ function assignColumns(blocks: PlacedBlock[]): void {
 }
 
 /**
- * 겹치는 TODO 슬롯에 쌓임 순서를 매긴다.
+ * 다른 블록 위에 얹힌 TODO 슬롯을 한 칸 민다.
  *
- * 열 배정과 같은 "빈 레인 재사용" 방식이지만, 결과를 폭을 나누는 데 쓰지 않고
- * **왼쪽으로 미는 양**으로 쓴다. 겹치지 않으면 전부 0이라 아무것도 밀리지 않는다.
+ * 전폭으로 얹으면 아래 구글 일정을 통째로 덮어 "그 시간에 뭐가 있었는지"가 사라진다.
+ * 한 칸만 밀어도 아래 블록의 왼쪽 색 띠가 드러나 존재가 읽힌다.
+ *
+ * **TODO끼리의 겹침은 여기서 다루지 않는다** — `buildTodoClusters`가 묶음 카드로 모은다.
+ * 예전에는 겹친 TODO를 레인 번호만큼 계단처럼 밀었는데, 미는 만큼 폭이 줄어 오른쪽 끝이
+ * 맞춰지는 탓에 뒤 블록이 앞 블록 **안에** 들어앉았다. 그래서 앞 블록의 시각 글자가
+ * 베이고, 완전히 포함된 TODO는 실오라기만 남았다.
  */
 function assignStackIndex(blocks: PlacedBlock[]): void {
-  const laneEnds: number[] = []
   const fixed = blocks.filter((b) => b.kind !== 'todo')
 
   for (const b of blocks) {
     if (b.kind !== 'todo') continue
 
-    let lane = laneEnds.findIndex((end) => end <= b.startOffset)
-    if (lane === -1) {
-      lane = laneEnds.length
-      laneEnds.push(b.endOffset)
-    } else {
-      laneEnds[lane] = b.endOffset
-    }
-
-    /*
-     * 아래에 다른 블록이 깔려 있으면 최소 한 칸은 민다.
-     * 전폭으로 얹으면 구글 일정을 통째로 덮어 "그 시간에 뭐가 있었는지"가 사라진다.
-     * 한 칸만 밀어도 아래 블록의 왼쪽 색 띠가 드러나 존재가 읽힌다.
-     */
-    const onTopOfSomething = fixed.some(
+    b.stackIndex = fixed.some(
       (f) => f.startOffset < b.endOffset && b.startOffset < f.endOffset,
     )
-    b.stackIndex = onTopOfSomething ? lane + 1 : lane
+      ? 1
+      : 0
   }
 }
 
