@@ -465,7 +465,17 @@
 /* 끌리는 블록 = 목적지 미리보기. 반투명해서 아래 격자와 이웃 블록이 비쳐 보인다. */
 .block.is-dragging {
   opacity: 0.72;
-  border-style: dashed;
+  /*
+   * 세 변만 점선으로 한다. `border-style: dashed` 단축 속성을 쓰면 네 변이 함께 바뀌어
+   * **왼쪽 색 띠(5px)까지 점선이 되어 토막토막 쪼개져 보인다** — kind-todo가 위·오른쪽·아래만
+   * 지정하는 것과 같은 이유다. 띠는 카테고리를 읽는 유일한 단서라 끊으면 안 된다.
+   *
+   * 1px짜리 세 변은 선택 윤곽(`is-selected`의 2px)에 가려 잘 안 보이는데, 5px인 왼쪽 띠만은
+   * 윤곽보다 두꺼워 삐져나온다. 그래서 이 사고가 왼쪽에서만 눈에 띄었다.
+   */
+  border-top-style: dashed;
+  border-right-style: dashed;
+  border-bottom-style: dashed;
   box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
   /* 끄는 동안 커서 아래에서 자리를 잡아야 하므로 다른 블록보다 위로 */
   z-index: 5;
