@@ -33,10 +33,44 @@ export default function App() {
   // 트레이의 "설정…" — 위젯을 못 만지는 상태에서의 탈출구.
   useEffect(() => window.api.onOpenSettings(() => setPanel('settings')), [])
 
-  // 현재 시각 선은 분 단위면 충분하다.
+  /*
+   * 현재 시각. 화면의 시각선·마감 카운트다운·"지남" 판정이 전부 이 값에서 파생된다.
+   *
+   * 분이 바뀌는 순간에 맞춰 깨운다. 고정 간격(예전의 30초)으로 돌리면 표시된 분이
+   * 실제 시계보다 최대 그 간격만큼 늦게 넘어가, 가만히 보고 있으면 어긋난 게 보인다.
+   *
+   * 타이머만 믿지 않고 다시 보일 때·포커스를 받을 때 한 번 더 맞춘다. 창이 가려져 있는
+   * 동안 눌린 타이머가 곧바로 따라오지 못하는 경우가 있어서다 (occlusion 스로틀링은
+   * main의 커맨드라인 스위치로 끄지만, 절전에서 깨어난 직후처럼 남는 구멍이 있다).
+   */
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(timer)
+    let timer: ReturnType<typeof setTimeout>
+
+    const schedule = (): void => {
+      // 다음 분 경계까지. 경계에 딱 걸려 0이 되면 같은 분에 두 번 돌므로 최소값을 둔다.
+      const msToNextMinute = 60_000 - (Date.now() % 60_000)
+      timer = setTimeout(() => {
+        setNow(new Date())
+        schedule()
+      }, Math.max(msToNextMinute, 1_000))
+    }
+
+    const resync = (): void => {
+      if (document.visibilityState === 'hidden') return
+      setNow(new Date())
+      clearTimeout(timer)
+      schedule()
+    }
+
+    schedule()
+    document.addEventListener('visibilitychange', resync)
+    window.addEventListener('focus', resync)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', resync)
+      window.removeEventListener('focus', resync)
+    }
   }, [])
 
   /**
