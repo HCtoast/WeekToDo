@@ -25,6 +25,21 @@ import { formatHarness, parseHarnessArgs, runHarness } from '@main/llm/harness'
 app.setPath('userData', join(app.getPath('appData'), 'weektodo-widget'))
 
 /*
+ * 가려져 있어도 렌더러를 계속 돌린다.
+ *
+ * `webPreferences.backgroundThrottling: false`는 **숨겨진** 창까지만 막아준다.
+ * Windows에서는 창이 다른 앱에 **가려지기만 해도**(occluded) Chromium이 렌더러를
+ * 백그라운드로 내려 타이머를 누른다 — 이 옵션으로는 못 막는 알려진 버그다
+ * (electron/electron#31016, #20974).
+ *
+ * 이 위젯은 배경 층에 두는 상주 위젯이라 대부분의 시간이 "가려진" 상태다.
+ * 그대로 두면 화면의 현재 시각선과 마감 카운트다운이 몇 분씩 멈춰 있다가
+ * 뒤늦게 튄다. 스위치는 `app.whenReady()` 전에 걸어야 먹는다.
+ */
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+
+/*
  * 개발용 자연어 명령 하네스는 **단일 인스턴스 잠금보다 먼저** 갈라낸다.
  *
  * 위젯을 띄워둔 채로 돌리는 것이 보통인데, 잠금에 걸리면 그대로 종료되어
